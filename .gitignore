@@ -1,0 +1,27 @@
+# Dependencies
+node_modules/
+venv/
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+
+# Databases & local state
+cropguard.db
+*.sqlite
+*.sqlite3
+
+# Build outputs
+dist/
+build/
+.output/
+
+# IDE & OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Environment files
+.env
+.env.local
