@@ -1,186 +1,111 @@
-import React, { useState, useRef } from "react";
-import { Camera, Upload, AlertTriangle, RefreshCw, Sparkles } from "lucide-react";
+import React, { useState, useRef, useEffect } from "react";
+import { motion } from "framer-motion";
+import { Camera, Upload, AlertTriangle, Sparkles } from "lucide-react";
 import { useTranslation } from "../i18n/I18nContext";
 import { analyzeCropImageAPI } from "../services/api";
+import { LeafScanner, SCAN_STAGES } from "../components/LeafScanner";
 
 interface ScannerPageProps {
   onDiagnosisComplete: (resultData: any) => void;
   selectedSample?: string | null;
 }
 
+const SAMPLES: [string, string, string][] = [
+  ["early_blight", "Early blight sample", "early_blight_tomato.jpg"],
+  ["late_blight", "Late blight sample", "late_blight_tomato.jpg"],
+  ["healthy", "Healthy sample", "healthy_tomato.jpg"],
+  ["blurry", "Blurry image test", "blurry_leaf.jpg"],
+  ["dark", "Dark image test", "dark_leaf.jpg"],
+  ["lowconf", "Uncertain case test", "lowconf_unclear.jpg"],
+];
+
 export const ScannerPage: React.FC<ScannerPageProps> = ({ onDiagnosisComplete }) => {
   const { t } = useTranslation();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [stage, setStage] = useState(0);
+  const [preview, setPreview] = useState<string | null>(null);
   const [qualityError, setQualityError] = useState<string | null>(null);
 
-  const processImageFile = async (file: File, field_id = "fld-01") => {
-    setIsAnalyzing(true);
+  useEffect(() => () => { if (preview) URL.revokeObjectURL(preview); }, [preview]);
+
+  const processImageFile = async (file: File, isSample = false) => {
     setQualityError(null);
+    setPreview(isSample ? null : URL.createObjectURL(file));
+    setStage(0);
+    setIsAnalyzing(true);
+
+    // Stages advance on a timer while the request runs; the last stage waits for the real response.
+    const tick = setInterval(() => setStage(s => Math.min(s + 1, SCAN_STAGES.length - 1)), 650);
 
     const formData = new FormData();
     formData.append("file", file);
-    formData.append("field_id", field_id);
+    formData.append("field_id", "fld-01");
     formData.append("leaf_part", "leaf");
     formData.append("client_scan_id", `scan-${Date.now()}`);
 
-    const res = await analyzeCropImageAPI(formData);
+    const [res] = await Promise.all([analyzeCropImageAPI(formData), new Promise(r => setTimeout(r, 3200))]);
+    clearInterval(tick);
+    setStage(SCAN_STAGES.length);
+    await new Promise(r => setTimeout(r, 450));
     setIsAnalyzing(false);
 
-    if (res.success) {
-      onDiagnosisComplete(res.data);
-    } else if (res.quality && res.quality.status !== "GOOD") {
-      setQualityError(res.quality.reasons[0] || "Image quality is insufficient. Please retake photo.");
-    } else {
-      setQualityError("Unable to diagnose image. Please take a clearer photo.");
-    }
+    if (res.success) onDiagnosisComplete(res.data);
+    else if (res.quality && res.quality.status !== "GOOD")
+      setQualityError(res.quality.reasons[0] || "Image quality is insufficient. Please retake the photo.");
+    else setQualityError("We couldn't diagnose this image. Please take a clearer photo.");
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      processImageFile(e.target.files[0]);
-    }
-  };
-
-  const triggerSampleTest = (type: string) => {
-    // Generate synthetic mock File matching test scenario
-    let fileName = "early_blight_tomato.jpg";
-    if (type === "blurry") fileName = "blurry_leaf.jpg";
-    else if (type === "dark") fileName = "dark_leaf.jpg";
-    else if (type === "late_blight") fileName = "late_blight_tomato.jpg";
-    else if (type === "healthy") fileName = "healthy_tomato.jpg";
-    else if (type === "lowconf") fileName = "lowconf_unclear.jpg";
-
-    const mockFile = new File(["dummy_image_content"], fileName, { type: "image/jpeg" });
-    processImageFile(mockFile);
+  const onFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0];
+    if (!f) return;
+    if (!/^image\/(jpeg|png|webp)$/.test(f.type)) return setQualityError("Please choose a JPG, PNG or WebP image.");
+    processImageFile(f);
   };
 
   return (
-    <div className="max-w-2xl mx-auto space-y-6 pb-12">
-      <div className="text-center space-y-1">
-        <h2 className="text-2xl font-black text-slate-900">{t("scanMyCrop")}</h2>
-        <p className="text-xs text-slate-600 font-medium">
-          {t("placeLeafInFrame")}
-        </p>
-      </div>
+    <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }} className="mx-auto max-w-3xl space-y-6 pb-12">
+      <header className="space-y-1">
+        <p className="text-xs font-semibold uppercase tracking-widest text-forest-2">Crop Doctor</p>
+        <h2 className="text-3xl font-extrabold text-forest">{t("scanMyCrop")}</h2>
+        <p className="text-sm text-ink-2">{t("placeLeafInFrame")}</p>
+      </header>
 
-      {/* CAMERA VIEWFINDER FRAME */}
-      <div className="relative aspect-square max-w-sm mx-auto bg-slate-900 rounded-3xl overflow-hidden shadow-2xl border-4 border-emerald-500 flex flex-col items-center justify-center p-6 text-center">
-        {/* Frame Overlay Guide */}
-        <div className="absolute inset-8 border-2 border-dashed border-emerald-400/70 rounded-2xl pointer-events-none flex items-center justify-center">
-          <span className="text-[10px] text-emerald-300 bg-black/60 px-2 py-1 rounded-md font-mono">
-            Center Leaf Affected Area Here
-          </span>
-        </div>
+      <LeafScanner src={preview} stage={stage} active={isAnalyzing} />
 
-        {isAnalyzing ? (
-          <div className="space-y-4 z-10">
-            <RefreshCw className="w-12 h-12 text-emerald-400 animate-spin mx-auto" />
-            <p className="text-sm font-bold text-white tracking-wide animate-pulse">
-              {t("analyzing")}
-            </p>
-          </div>
-        ) : (
-          <div className="space-y-4 z-10">
-            <div className="w-20 h-20 bg-emerald-800/80 rounded-full flex items-center justify-center mx-auto border-2 border-emerald-400 shadow-inner">
-              <Camera className="w-10 h-10 text-emerald-300" />
-            </div>
-            <p className="text-xs text-slate-300 max-w-xs mx-auto">
-              Hold camera steady in natural sunlight. Keep leaf 15-20 cm away.
-            </p>
-          </div>
-        )}
-      </div>
-
-      {/* IMAGE QUALITY WARNING BADGE (REQUIREMENT 10) */}
       {qualityError && (
-        <div className="bg-amber-100 border-2 border-amber-400 text-amber-900 rounded-2xl p-4 flex items-start gap-3 shadow-md animate-shake">
-          <AlertTriangle className="w-6 h-6 text-amber-600 flex-shrink-0 mt-0.5" />
+        <div role="alert" className="animate-shake flex items-start gap-3 rounded-2xl border border-amber-300 bg-amber-50 p-4 text-amber-900">
+          <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0" aria-hidden />
           <div>
-            <h4 className="font-bold text-sm">Image Quality Issue Detected</h4>
-            <p className="text-xs mt-1 font-medium text-amber-800">{qualityError}</p>
-            <div className="mt-2 text-[11px] font-bold text-amber-900 underline">
-              Tip: Move to brighter sunlight and keep your hand steady.
-            </div>
+            <h3 className="text-sm font-bold">We won't guess from this image</h3>
+            <p className="mt-1 text-sm">{qualityError}</p>
+            <p className="mt-1 text-xs">Tip: use bright, indirect daylight and hold steady about 15–20 cm from the leaf.</p>
           </div>
         </div>
       )}
 
-      {/* SCAN ACTION BUTTONS */}
-      <input
-        type="file"
-        ref={fileInputRef}
-        onChange={handleFileChange}
-        accept="image/*"
-        capture="environment"
-        className="hidden"
-      />
-
-      <div className="grid grid-cols-2 gap-4">
-        <button
-          onClick={() => fileInputRef.current?.click()}
-          disabled={isAnalyzing}
-          className="py-4 px-4 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-2xl shadow-lg flex items-center justify-center gap-2 transition"
-        >
-          <Camera className="w-5 h-5" />
-          <span>{t("takePhoto")}</span>
+      <input type="file" ref={fileInputRef} onChange={onFile} accept="image/jpeg,image/png,image/webp" capture="environment" className="hidden" />
+      <div className="grid grid-cols-2 gap-3">
+        <button onClick={() => fileInputRef.current?.click()} disabled={isAnalyzing} className="flex min-h-14 items-center justify-center gap-2 rounded-2xl bg-forest font-semibold text-lime shadow-[var(--shadow-soft)] transition active:scale-[.98] disabled:opacity-50">
+          <Camera className="h-5 w-5" aria-hidden /> {t("takePhoto")}
         </button>
-
-        <button
-          onClick={() => fileInputRef.current?.click()}
-          disabled={isAnalyzing}
-          className="py-4 px-4 bg-slate-800 hover:bg-slate-900 text-white font-bold rounded-2xl shadow-lg flex items-center justify-center gap-2 transition"
-        >
-          <Upload className="w-5 h-5" />
-          <span>{t("uploadGallery")}</span>
+        <button onClick={() => fileInputRef.current?.click()} disabled={isAnalyzing} className="flex min-h-14 items-center justify-center gap-2 rounded-2xl border border-line bg-white font-semibold text-forest transition active:scale-[.98] disabled:opacity-50">
+          <Upload className="h-5 w-5" aria-hidden /> {t("uploadGallery")}
         </button>
       </div>
 
-      {/* QUICK PRE-SET SAMPLE SCENARIOS */}
-      <div className="bg-slate-100 rounded-2xl p-4 border border-slate-200">
-        <div className="flex items-center gap-2 mb-3">
-          <Sparkles className="w-4 h-4 text-emerald-600" />
-          <h4 className="text-xs font-bold text-slate-800 uppercase">Or Select Sample Test Photo:</h4>
+      <section className="rounded-2xl border border-line bg-white p-4">
+        <div className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-ink-2">
+          <Sparkles className="h-4 w-4 text-forest-2" aria-hidden /> Demo samples (not real photos)
         </div>
-        <div className="grid grid-cols-3 gap-2 text-xs">
-          <button
-            onClick={() => triggerSampleTest("early_blight")}
-            className="p-2.5 bg-white rounded-xl border border-slate-300 hover:border-emerald-500 font-semibold text-slate-700 shadow-sm"
-          >
-            🍅 Early Blight (94%)
-          </button>
-          <button
-            onClick={() => triggerSampleTest("late_blight")}
-            className="p-2.5 bg-white rounded-xl border border-slate-300 hover:border-emerald-500 font-semibold text-slate-700 shadow-sm"
-          >
-            🍂 Late Blight (92%)
-          </button>
-          <button
-            onClick={() => triggerSampleTest("healthy")}
-            className="p-2.5 bg-white rounded-xl border border-slate-300 hover:border-emerald-500 font-semibold text-slate-700 shadow-sm"
-          >
-            🌱 Healthy (96%)
-          </button>
-          <button
-            onClick={() => triggerSampleTest("blurry")}
-            className="p-2.5 bg-white rounded-xl border border-slate-300 hover:border-amber-500 font-semibold text-slate-700 shadow-sm"
-          >
-            🌀 Test Blur Check
-          </button>
-          <button
-            onClick={() => triggerSampleTest("dark")}
-            className="p-2.5 bg-white rounded-xl border border-slate-300 hover:border-amber-500 font-semibold text-slate-700 shadow-sm"
-          >
-            🌑 Test Dark Check
-          </button>
-          <button
-            onClick={() => triggerSampleTest("lowconf")}
-            className="p-2.5 bg-white rounded-xl border border-slate-300 hover:border-amber-500 font-semibold text-slate-700 shadow-sm"
-          >
-            ❓ Test Low Conf (42%)
-          </button>
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+          {SAMPLES.map(([key, label, file]) => (
+            <button key={key} disabled={isAnalyzing} onClick={() => processImageFile(new File(["demo"], file, { type: "image/jpeg" }), true)} className="min-h-11 rounded-xl border border-line px-3 text-sm font-medium text-ink transition hover:border-forest-2 hover:bg-paper disabled:opacity-50">
+              {label}
+            </button>
+          ))}
         </div>
-      </div>
-    </div>
+      </section>
+    </motion.div>
   );
 };

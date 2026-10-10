@@ -59,7 +59,7 @@ const MainApp: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-100 text-slate-900 font-sans flex flex-col antialiased">
+    <div className="min-h-screen bg-paper text-ink font-sans flex flex-col antialiased">
       {/* Top Header & Navigation */}
       <Navbar currentRole={role} setRole={setRole} activeTab={activeTab} setActiveTab={setActiveTab} />
 

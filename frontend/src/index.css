@@ -1,17 +1,39 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Manrope:wght@600;700;800&display=swap");
 @import "tailwindcss";
 
+@theme {
+  --color-paper: #F5F6EF;
+  --color-forest: #123B2A;
+  --color-forest-2: #285C40;
+  --color-lime: #C5F078;
+  --color-ink: #18251D;
+  --color-ink-2: #68746A;
+  --color-line: #DCE4D8;
+  --font-display: "Manrope", "Plus Jakarta Sans", system-ui, sans-serif;
+  --font-sans: "Inter", system-ui, sans-serif;
+}
+
+:root {
+  --ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --shadow-soft: 0 1px 2px rgba(18,59,42,.06), 0 12px 32px -12px rgba(18,59,42,.18);
+}
+
 @layer base {
-  body {
-    @apply bg-slate-100 text-slate-900 antialiased font-sans;
-  }
+  body { @apply bg-paper text-ink antialiased font-sans; font-variant-numeric: tabular-nums; }
+  h1, h2, h3 { font-family: var(--font-display); letter-spacing: -0.02em; }
+  :focus-visible { outline: 2px solid var(--color-forest-2); outline-offset: 2px; border-radius: 6px; }
 }
 
-@keyframes shake {
-  0%, 100% { transform: translateX(0); }
-  25% { transform: translateX(-4px); }
-  75% { transform: translateX(4px); }
+.grid-texture {
+  background-image:
+    linear-gradient(rgba(197,240,120,.09) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(197,240,120,.09) 1px, transparent 1px);
+  background-size: 28px 28px;
 }
 
-.animate-shake {
-  animation: shake 0.4s ease-in-out;
+@keyframes shake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-4px)} 75%{transform:translateX(4px)} }
+.animate-shake { animation: shake .4s ease-in-out; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
 }

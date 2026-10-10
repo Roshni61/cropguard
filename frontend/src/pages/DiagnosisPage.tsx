@@ -126,6 +126,7 @@ export const DiagnosisPage: React.FC<DiagnosisPageProps> = ({ data, onScanAgain,
             originalImageUrl="https://images.unsplash.com/photo-1592417817098-8f3d6eb1475a?w=600&auto=format&fit=crop"
             gradCamUrl={gradCamUrl}
             diseaseName={diseaseName}
+            alternatives={alternatives}
           />
 
           {/* WEATHER-AWARE RECOMMENDATION (REQUIREMENT 19) */}
