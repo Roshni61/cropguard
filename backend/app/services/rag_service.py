@@ -1,3 +1,4 @@
+import os
 from typing import Dict, Any, List
 
 class RAGAssistantService:
@@ -34,7 +35,8 @@ class RAGAssistantService:
     ) -> Dict[str, Any]:
         """
         Answers questions grounded in verified knowledge base documents.
-        Refuses unsafe queries asking to invent chemical dosages.
+        Uses optional Gemini API if GEMINI_API_KEY is present in environment,
+        falling back seamlessly to RAG rule-based knowledge base.
         """
         query_lower = user_query.lower()
 
@@ -65,7 +67,34 @@ class RAGAssistantService:
 
         cited_sources = [c["source"] for c in relevant_chunks]
 
-        # 3. Construct language-tailored response
+        # 3. Optional Gemini API Integration
+        gemini_key = os.getenv("GEMINI_API_KEY")
+        if gemini_key and gemini_key.strip():
+            try:
+                from google import genai
+                client = genai.Client(api_key=gemini_key.strip())
+                system_instruction = (
+                    "You are CropGuard AI, an expert agricultural consultant. Provide helpful, accurate, "
+                    "practical farming advice for crop health, disease management, and irrigation. "
+                    "Always emphasize safety, pre-harvest interval periods, and local agricultural officer advice."
+                )
+                prompt = f"Field Context: {field_context}\nLanguage: {language}\nFarmer Question: {user_query}\nVerified Data: {relevant_chunks}"
+                response = client.models.generate_content(
+                    model="gemini-2.5-flash",
+                    contents=prompt,
+                    config={"system_instruction": system_instruction}
+                )
+                if response and response.text:
+                    return {
+                        "answer": response.text.strip(),
+                        "citations": cited_sources + ["Gemini AI Agricultural Model"],
+                        "safe": True,
+                        "escalate_recommended": False
+                    }
+            except Exception as e:
+                print(f"[CropGuard AI] Gemini API fallback to RAG: {e}")
+
+        # 4. Fallback to verified local RAG response construction
         field_str = ""
         if field_context:
             field_name = field_context.get("name", "Tomato Field")

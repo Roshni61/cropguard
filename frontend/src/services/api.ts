@@ -1,10 +1,74 @@
 import { saveScanOffline, getOfflineScans, updateScanSyncStatus } from "../offline/db";
 
-const API_BASE = "http://localhost:8000/api/v1";
+const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000/api/v1";
+
+const getAuthHeaders = (): Record<string, string> => {
+  const token = localStorage.getItem("cropguard_token");
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+  };
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+  return headers;
+};
+
+export const loginAPI = async (data: { phone: string; password: string }) => {
+  const res = await fetch(`${API_BASE}/auth/login`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+  const json = await res.json();
+  if (!res.ok) {
+    throw new Error(json.detail || "Login failed. Please check your credentials.");
+  }
+  return json; // { access_token, token_type, user }
+};
+
+export const registerAPI = async (data: {
+  name: string;
+  phone: string;
+  password: string;
+  role?: string;
+  preferred_language?: string;
+  state?: string;
+  district?: string;
+}) => {
+  const res = await fetch(`${API_BASE}/auth/register`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+  const json = await res.json();
+  if (!res.ok) {
+    throw new Error(json.detail || "Registration failed. Please check inputs.");
+  }
+  return json; // { access_token, token_type, user }
+};
+
+export const sendChatMessageAPI = async (query: string, language = "en", field_id?: string) => {
+  try {
+    const res = await fetch(`${API_BASE}/chat/query`, {
+      method: "POST",
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ query, language, field_id }),
+    });
+    if (res.ok) {
+      const json = await res.json();
+      return json.data;
+    }
+  } catch (e) {
+    console.warn("Chat API offline, using fallback response.", e);
+  }
+  return null;
+};
 
 export const fetchWeather = async (lat = 11.0168, lng = 76.9558) => {
   try {
-    const res = await fetch(`${API_BASE}/weather/?lat=${lat}&lng=${lng}`);
+    const res = await fetch(`${API_BASE}/weather/?lat=${lat}&lng=${lng}`, {
+      headers: getAuthHeaders(),
+    });
     if (res.ok) {
       const json = await res.json();
       return json.data;
@@ -26,7 +90,9 @@ export const fetchWeather = async (lat = 11.0168, lng = 76.9558) => {
 
 export const fetchDiseaseRisk = async (district = "Coimbatore") => {
   try {
-    const res = await fetch(`${API_BASE}/risk/?district=${district}`);
+    const res = await fetch(`${API_BASE}/risk/?district=${district}`, {
+      headers: getAuthHeaders(),
+    });
     if (res.ok) {
       const json = await res.json();
       return json.data;
@@ -53,8 +119,14 @@ export const analyzeCropImageAPI = async (formData: FormData, isOfflineMode = fa
 
   if (navigator.onLine && !isOfflineMode) {
     try {
+      const token = localStorage.getItem("cropguard_token");
+      const headers: Record<string, string> = {};
+      if (token) {
+        headers["Authorization"] = `Bearer ${token}`;
+      }
       const res = await fetch(`${API_BASE}/scans/analyze`, {
         method: "POST",
+        headers,
         body: formData,
       });
       if (res.ok) {
@@ -171,7 +243,7 @@ export const syncOfflineScansWithServer = async () => {
 
     const res = await fetch(`${API_BASE}/sync/batch`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: getAuthHeaders(),
       body: JSON.stringify({ scans: pending })
     });
 
