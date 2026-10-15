@@ -13,7 +13,7 @@ const getAuthHeaders = (): Record<string, string> => {
   return headers;
 };
 
-export const loginAPI = async (data: { phone: string; password: string }) => {
+export const loginAPI = async (data: { phone?: string; email?: string; password: string }) => {
   const res = await fetch(`${API_BASE}/auth/login`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -21,14 +21,15 @@ export const loginAPI = async (data: { phone: string; password: string }) => {
   });
   const json = await res.json();
   if (!res.ok) {
-    throw new Error(json.detail || "Login failed. Please check your credentials.");
+    throw new Error(json.detail || "Incorrect email, phone or password.");
   }
   return json; // { access_token, token_type, user }
 };
 
 export const registerAPI = async (data: {
   name: string;
-  phone: string;
+  phone?: string;
+  email?: string;
   password: string;
   role?: string;
   preferred_language?: string;
@@ -42,9 +43,38 @@ export const registerAPI = async (data: {
   });
   const json = await res.json();
   if (!res.ok) {
-    throw new Error(json.detail || "Registration failed. Please check inputs.");
+    throw new Error(json.detail || "Unable to complete registration. Please verify details.");
   }
   return json; // { access_token, token_type, user }
+};
+
+export const requestPasswordResetAPI = async (email: string) => {
+  const res = await fetch(`${API_BASE}/auth/reset-password`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email }),
+  });
+  const json = await res.json();
+  return json;
+};
+
+export const syncSupabaseSessionWithBackend = async (token: string) => {
+  try {
+    const res = await fetch(`${API_BASE}/auth/supabase-sync`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`
+      }
+    });
+    if (res.ok) {
+      const json = await res.json();
+      return json.user;
+    }
+  } catch (err) {
+    console.warn("Backend sync notice:", err);
+  }
+  return null;
 };
 
 export const sendChatMessageAPI = async (query: string, language = "en", field_id?: string) => {

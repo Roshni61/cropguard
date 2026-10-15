@@ -12,14 +12,15 @@ class User(Base):
 
     id = Column(String, primary_key=True, default=generate_uuid)
     name = Column(String, nullable=False)
-    phone = Column(String, unique=True, index=True, nullable=False)
-    email = Column(String, nullable=True)
+    phone = Column(String, unique=True, index=True, nullable=True)
+    email = Column(String, unique=True, index=True, nullable=True)
+    supabase_user_id = Column(String, unique=True, index=True, nullable=True)
     role = Column(String, default="FARMER") # FARMER, EXPERT, FIELD_OFFICER, DISTRICT_ADMIN, SYS_ADMIN
     preferred_language = Column(String, default="en") # en, ta, hi
     state = Column(String, default="Tamil Nadu")
     district = Column(String, default="Coimbatore")
     measurement_unit = Column(String, default="acre") # acre, hectare
-    password_hash = Column(String, nullable=False)
+    password_hash = Column(String, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
     farms = relationship("Farm", back_populates="user", cascade="all, delete-orphan")

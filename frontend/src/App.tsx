@@ -12,18 +12,26 @@ import { OfficerDashboardPage } from "./pages/OfficerDashboardPage";
 import { MarketSchemesPage } from "./pages/MarketSchemesPage";
 import { LandingPage } from "./pages/LandingPage";
 import { AuthPage } from "./pages/AuthPage";
-import { fetchWeather, fetchDiseaseRisk } from "./services/api";
-import { Camera, Home, Sprout, Bot, Bell, TrendingUp } from "lucide-react";
+import { fetchWeather, fetchDiseaseRisk, syncSupabaseSessionWithBackend } from "./services/api";
+import { supabase, isSupabaseConfigured } from "./services/supabase";
+import { Camera, Home, Sprout, Bot, Bell, TrendingUp, Shield, Loader2 } from "lucide-react";
 
 interface MainDashboardProps {
   user: any;
   onLogout: () => void;
+  initialTab?: string;
 }
 
-const MainDashboard: React.FC<MainDashboardProps> = ({ user, onLogout }) => {
+const MainDashboard: React.FC<MainDashboardProps> = ({ user, onLogout, initialTab = "home" }) => {
   const { t } = useTranslation();
   const [role, setRole] = useState(user?.role || "FARMER");
-  const [activeTab, setActiveTab] = useState("home");
+  const [activeTab, setActiveTab] = useState(initialTab);
+
+  useEffect(() => {
+    if (initialTab) {
+      setActiveTab(initialTab);
+    }
+  }, [initialTab]);
   const [diagnosisData, setDiagnosisData] = useState<any>(null);
   const [selectedSample, setSelectedSample] = useState<string | null>(null);
 
@@ -202,47 +210,214 @@ export default function App() {
     }
   });
 
-  const [view, setView] = useState<"landing" | "login" | "register" | "dashboard">(() => {
-    return token && user ? "dashboard" : "landing";
+  const [activeDashboardTab, setActiveDashboardTab] = useState<string>(() => {
+    return sessionStorage.getItem("cropguard_return_tab") || "home";
   });
+
+  const [view, setView] = useState<"landing" | "login" | "register" | "forgot" | "reset-password" | "callback" | "dashboard">(() => {
+    const path = window.location.pathname;
+    const hash = window.location.hash;
+
+    // Detect redirect routes
+    if (path === "/reset-password" || hash.includes("type=recovery")) {
+      return "reset-password";
+    }
+    if (path === "/auth/callback" || hash.includes("access_token=")) {
+      return "callback";
+    }
+
+    const savedToken = localStorage.getItem("cropguard_token");
+    const stored = localStorage.getItem("cropguard_user");
+    return savedToken && stored ? "dashboard" : "landing";
+  });
+
+  // Supabase auth state listener & session sync across refresh/login
+  useEffect(() => {
+    if (!isSupabaseConfigured || !supabase) {
+      if (view === "callback") {
+        setView("landing");
+      }
+      return;
+    }
+
+    // Process potential callback or active session on mount
+    supabase.auth.getSession().then(async ({ data: { session }, error }) => {
+      if (session && !error) {
+        const sToken = session.access_token;
+        localStorage.setItem("cropguard_token", sToken);
+        setToken(sToken);
+
+        try {
+          const syncedUser = await syncSupabaseSessionWithBackend(sToken);
+          const activeUser = syncedUser || {
+            id: session.user.id,
+            email: session.user.email,
+            name: session.user.user_metadata?.full_name || session.user.email?.split("@")[0] || "Farmer",
+            role: session.user.user_metadata?.role || "FARMER",
+            district: session.user.user_metadata?.district || "Coimbatore",
+            state: session.user.user_metadata?.state || "Tamil Nadu",
+          };
+          localStorage.setItem("cropguard_user", JSON.stringify(activeUser));
+          setUser(activeUser);
+
+          // Return to original tab or default to home
+          const returnTab = sessionStorage.getItem("cropguard_return_tab");
+          if (returnTab) {
+            setActiveDashboardTab(returnTab);
+            sessionStorage.removeItem("cropguard_return_tab");
+          }
+
+          if (window.location.pathname === "/auth/callback" || window.location.hash.includes("access_token=")) {
+            window.history.replaceState({}, document.title, "/");
+          }
+
+          setView("dashboard");
+        } catch (e) {
+          console.warn("Backend session sync error:", e);
+        }
+      } else if (view === "callback") {
+        setView("login");
+      }
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === "PASSWORD_RECOVERY") {
+        setView("reset-password");
+      } else if (event === "SIGNED_IN" || event === "TOKEN_REFRESHED") {
+        if (session) {
+          const sToken = session.access_token;
+          localStorage.setItem("cropguard_token", sToken);
+          setToken(sToken);
+          try {
+            const syncedUser = await syncSupabaseSessionWithBackend(sToken);
+            const activeUser = syncedUser || {
+              id: session.user.id,
+              email: session.user.email,
+              name: session.user.user_metadata?.full_name || session.user.email?.split("@")[0] || "Farmer",
+              role: session.user.user_metadata?.role || "FARMER",
+              district: session.user.user_metadata?.district || "Coimbatore",
+              state: session.user.user_metadata?.state || "Tamil Nadu",
+            };
+            localStorage.setItem("cropguard_user", JSON.stringify(activeUser));
+            setUser(activeUser);
+
+            const returnTab = sessionStorage.getItem("cropguard_return_tab");
+            if (returnTab) {
+              setActiveDashboardTab(returnTab);
+              sessionStorage.removeItem("cropguard_return_tab");
+            }
+
+            if (window.location.pathname === "/auth/callback" || window.location.hash.includes("access_token=")) {
+              window.history.replaceState({}, document.title, "/");
+            }
+
+            setView("dashboard");
+          } catch (e) {
+            console.warn("Failed syncing Supabase user:", e);
+          }
+        }
+      } else if (event === "SIGNED_OUT") {
+        localStorage.removeItem("cropguard_token");
+        localStorage.removeItem("cropguard_user");
+        sessionStorage.removeItem("cropguard_return_tab");
+        setUser(null);
+        setToken(null);
+        setView("landing");
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [view]);
 
   const handleAuthSuccess = (authUser: any, authToken: string) => {
     setUser(authUser);
     setToken(authToken);
+
+    const returnTab = sessionStorage.getItem("cropguard_return_tab");
+    if (returnTab) {
+      setActiveDashboardTab(returnTab);
+      sessionStorage.removeItem("cropguard_return_tab");
+    }
     setView("dashboard");
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    if (isSupabaseConfigured && supabase) {
+      try {
+        await supabase.auth.signOut();
+      } catch (err) {
+        console.warn("Supabase signout failed:", err);
+      }
+    }
     localStorage.removeItem("cropguard_token");
     localStorage.removeItem("cropguard_user");
+    sessionStorage.removeItem("cropguard_return_tab");
     setUser(null);
     setToken(null);
     setView("landing");
+  };
+
+  // Route guard helper: if user isn't authenticated, save destination and navigate to login
+  const navigateGuarded = (targetTab: string) => {
+    if (token && user) {
+      setActiveDashboardTab(targetTab);
+      setView("dashboard");
+    } else {
+      sessionStorage.setItem("cropguard_return_tab", targetTab);
+      setView("login");
+    }
   };
 
   return (
     <I18nProvider>
       {view === "landing" && (
         <LandingPage
-          onLoginClick={() => setView("login")}
-          onRegisterClick={() => setView("register")}
-          onExploreClick={() => {
-            if (token && user) setView("dashboard");
-            else setView("login");
+          onLoginClick={() => {
+            sessionStorage.setItem("cropguard_return_tab", "home");
+            setView("login");
+          }}
+          onRegisterClick={() => {
+            sessionStorage.setItem("cropguard_return_tab", "home");
+            setView("register");
+          }}
+          onExploreClick={() => navigateGuarded("scanner")}
+        />
+      )}
+
+      {view === "callback" && (
+        <div className="min-h-screen bg-forest flex flex-col items-center justify-center text-white p-6">
+          <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-lime to-emerald-400 flex items-center justify-center shadow-lg mb-4">
+            <Shield className="w-7 h-7 text-forest stroke-[2.5]" />
+          </div>
+          <div className="flex items-center gap-2 mb-2">
+            <Loader2 className="w-5 h-5 text-lime animate-spin" />
+            <h2 className="text-xl font-bold">Authenticating with CropGuard...</h2>
+          </div>
+          <p className="text-sm text-white/70">Securely connecting your account, please wait a moment.</p>
+        </div>
+      )}
+
+      {(view === "login" || view === "register" || view === "forgot" || view === "reset-password") && (
+        <AuthPage
+          initialMode={view}
+          onAuthSuccess={handleAuthSuccess}
+          onBackToLanding={() => {
+            if (window.location.pathname === "/reset-password" || window.location.pathname === "/auth/callback") {
+              window.history.replaceState({}, document.title, "/");
+            }
+            setView("landing");
           }}
         />
       )}
 
-      {(view === "login" || view === "register") && (
-        <AuthPage
-          initialMode={view}
-          onAuthSuccess={handleAuthSuccess}
-          onBackToLanding={() => setView("landing")}
-        />
-      )}
-
       {view === "dashboard" && (
-        <MainDashboard user={user} onLogout={handleLogout} />
+        <MainDashboard 
+          user={user} 
+          onLogout={handleLogout} 
+          initialTab={activeDashboardTab}
+        />
       )}
     </I18nProvider>
   );

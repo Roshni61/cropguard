@@ -106,7 +106,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             <div className="flex items-center gap-2 pl-2 border-l border-white/20">
               <div className="hidden md:flex items-center gap-1.5 text-xs text-lime font-bold">
                 <User className="w-3.5 h-3.5" />
-                <span>{user.name || user.phone}</span>
+                <span>{user.name || user.email || user.phone}</span>
               </div>
               {onLogout && (
                 <button
