@@ -123,12 +123,12 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ user, onLogout }) => {
 
       {/* Bottom Navigation Bar for Mobile Outdoor Ergonomics (FARMER ROLE) */}
       {role === "FARMER" && (
-        <footer className="sticky bottom-0 z-40 bg-white/90 backdrop-blur-lg border-t border-line py-2 px-4 shadow-2xl">
+        <footer className="sticky bottom-0 z-40 bg-white/95 backdrop-blur-md border-t border-line py-2.5 px-4 shadow-[var(--shadow-lift)]">
           <div className="max-w-md mx-auto flex items-center justify-around">
             <button
               onClick={() => setActiveTab("home")}
-              className={`flex flex-col items-center gap-1 font-bold text-[10px] transition ${
-                activeTab === "home" ? "text-forest scale-105" : "text-ink-2 hover:text-ink"
+              className={`flex flex-col items-center gap-1 font-bold text-[10px] transition-all cursor-pointer ${
+                activeTab === "home" ? "text-forest scale-105 font-black" : "text-ink-2 hover:text-ink"
               }`}
             >
               <Home className="w-5 h-5" />
@@ -137,8 +137,8 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ user, onLogout }) => {
 
             <button
               onClick={() => setActiveTab("fields")}
-              className={`flex flex-col items-center gap-1 font-bold text-[10px] transition ${
-                activeTab === "fields" ? "text-forest scale-105" : "text-ink-2 hover:text-ink"
+              className={`flex flex-col items-center gap-1 font-bold text-[10px] transition-all cursor-pointer ${
+                activeTab === "fields" ? "text-forest scale-105 font-black" : "text-ink-2 hover:text-ink"
               }`}
             >
               <Sprout className="w-5 h-5" />
@@ -147,18 +147,18 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ user, onLogout }) => {
 
             <button
               onClick={() => setActiveTab("scanner")}
-              className="flex flex-col items-center gap-1 font-bold text-[10px] text-white -mt-6"
+              className="flex flex-col items-center gap-1 font-bold text-[10px] text-white -mt-6 cursor-pointer"
             >
-              <div className="w-14 h-14 rounded-full bg-forest flex items-center justify-center shadow-xl border-4 border-white animate-pulse">
+              <div className="w-14 h-14 rounded-full bg-forest flex items-center justify-center shadow-lg border-4 border-white hover:scale-105 active:scale-95 transition-transform">
                 <Camera className="w-7 h-7 stroke-[2.5] text-lime" />
               </div>
-              <span className="text-forest font-extrabold -mt-1">SCAN</span>
+              <span className="text-forest font-black -mt-0.5 tracking-wider">SCAN</span>
             </button>
 
             <button
               onClick={() => setActiveTab("assistant")}
-              className={`flex flex-col items-center gap-1 font-bold text-[10px] transition ${
-                activeTab === "assistant" ? "text-forest scale-105" : "text-ink-2 hover:text-ink"
+              className={`flex flex-col items-center gap-1 font-bold text-[10px] transition-all cursor-pointer ${
+                activeTab === "assistant" ? "text-forest scale-105 font-black" : "text-ink-2 hover:text-ink"
               }`}
             >
               <Bot className="w-5 h-5" />
@@ -167,8 +167,8 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ user, onLogout }) => {
 
             <button
               onClick={() => setActiveTab("alerts")}
-              className={`flex flex-col items-center gap-1 font-bold text-[10px] transition ${
-                activeTab === "alerts" ? "text-forest scale-105" : "text-ink-2 hover:text-ink"
+              className={`flex flex-col items-center gap-1 font-bold text-[10px] transition-all cursor-pointer ${
+                activeTab === "alerts" ? "text-forest scale-105 font-black" : "text-ink-2 hover:text-ink"
               }`}
             >
               <Bell className="w-5 h-5" />
@@ -177,8 +177,8 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ user, onLogout }) => {
 
             <button
               onClick={() => setActiveTab("market")}
-              className={`flex flex-col items-center gap-1 font-bold text-[10px] transition ${
-                activeTab === "market" ? "text-forest scale-105" : "text-ink-2 hover:text-ink"
+              className={`flex flex-col items-center gap-1 font-bold text-[10px] transition-all cursor-pointer ${
+                activeTab === "market" ? "text-forest scale-105 font-black" : "text-ink-2 hover:text-ink"
               }`}
             >
               <TrendingUp className="w-5 h-5" />

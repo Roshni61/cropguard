@@ -1,9 +1,9 @@
 import React from "react";
-import { motion } from "framer-motion";
+import { motion, useReducedMotion } from "framer-motion";
 import { 
   Shield, Camera, CloudRain, AlertTriangle, Bot, 
-  Sprout, ChevronRight, CheckCircle2, ArrowRight, 
-  Sparkles, BarChart3, Globe
+  Sprout, ChevronRight, CheckCircle2, 
+  Sparkles, BarChart3, Globe, Layers, ArrowUpRight
 } from "lucide-react";
 import { useTranslation } from "../i18n/I18nContext";
 
@@ -13,16 +13,41 @@ interface LandingPageProps {
   onExploreClick: () => void;
 }
 
+const CURRENT_YEAR = 2026;
+
 export const LandingPage: React.FC<LandingPageProps> = ({
   onLoginClick,
   onRegisterClick,
   onExploreClick,
 }) => {
   const { language, setLanguage } = useTranslation();
+  const shouldReduceMotion = useReducedMotion();
 
   const scrollToSection = (id: string) => {
     const el = document.getElementById(id);
-    if (el) el.scrollIntoView({ behavior: "smooth" });
+    if (el) el.scrollIntoView({ behavior: shouldReduceMotion ? "auto" : "smooth" });
+  };
+
+  const containerVariants = {
+    hidden: { opacity: shouldReduceMotion ? 1 : 0 },
+    show: {
+      opacity: 1,
+      transition: {
+        staggerChildren: shouldReduceMotion ? 0 : 0.08,
+      },
+    },
+  };
+
+  const itemVariants = {
+    hidden: { opacity: shouldReduceMotion ? 1 : 0, y: shouldReduceMotion ? 0 : 16 },
+    show: { 
+      opacity: 1, 
+      y: 0, 
+      transition: { 
+        duration: shouldReduceMotion ? 0 : 0.45, 
+        ease: [0.22, 1, 0.36, 1] as const
+      } 
+    },
   };
 
   return (
@@ -31,32 +56,58 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       <header className="sticky top-0 z-50 bg-forest/95 backdrop-blur-md border-b border-forest-2 text-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3.5 flex items-center justify-between">
           {/* Brand Logo */}
-          <div className="flex items-center gap-3 cursor-pointer" onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}>
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-lime to-emerald-400 flex items-center justify-center shadow-md">
-              <Shield className="w-6 h-6 text-forest stroke-[2.5]" />
+          <div 
+            className="flex items-center gap-3 cursor-pointer select-none" 
+            onClick={() => window.scrollTo({ top: 0, behavior: shouldReduceMotion ? "auto" : "smooth" })}
+          >
+            <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-lime to-emerald-400 flex items-center justify-center shadow-[var(--shadow-soft)]">
+              <Shield className="w-5 h-5 text-forest stroke-[2.5]" />
             </div>
             <div>
               <span className="text-xl font-extrabold tracking-tight text-white">CropGuard</span>
-              <span className="text-xs font-semibold text-lime ml-1.5 px-2 py-0.5 rounded-full bg-white/10">AI</span>
+              <span className="text-[10px] font-bold text-lime ml-2 px-2 py-0.5 rounded-full bg-white/10 uppercase tracking-widest">
+                AI
+              </span>
             </div>
           </div>
 
           {/* Desktop Navigation Links */}
-          <nav className="hidden md:flex items-center gap-8 text-sm font-medium text-lime/90">
-            <button onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })} className="hover:text-lime transition">Home</button>
-            <button onClick={() => scrollToSection("features")} className="hover:text-lime transition">Features</button>
-            <button onClick={() => scrollToSection("how-it-works")} className="hover:text-lime transition">How It Works</button>
-            <button onClick={() => scrollToSection("benefits")} className="hover:text-lime transition">Benefits</button>
+          <nav className="hidden md:flex items-center gap-8 text-sm font-medium text-white/80">
+            <button 
+              onClick={() => window.scrollTo({ top: 0, behavior: shouldReduceMotion ? "auto" : "smooth" })} 
+              className="hover:text-lime transition-colors"
+            >
+              Home
+            </button>
+            <button 
+              onClick={() => scrollToSection("features")} 
+              className="hover:text-lime transition-colors"
+            >
+              Features
+            </button>
+            <button 
+              onClick={() => scrollToSection("how-it-works")} 
+              className="hover:text-lime transition-colors"
+            >
+              How It Works
+            </button>
+            <button 
+              onClick={() => scrollToSection("benefits")} 
+              className="hover:text-lime transition-colors"
+            >
+              Benefits
+            </button>
           </nav>
 
           {/* Right Action & Auth Buttons */}
           <div className="flex items-center gap-3">
             {/* Language Switcher */}
-            <div className="flex items-center bg-white/10 rounded-lg px-2 py-1 border border-white/20 text-xs">
-              <Globe className="w-3.5 h-3.5 text-lime mr-1" />
+            <div className="flex items-center bg-white/10 hover:bg-white/15 rounded-xl px-2.5 py-1.5 border border-white/20 text-xs transition">
+              <Globe className="w-3.5 h-3.5 text-lime mr-1.5" />
               <select
                 value={language}
                 onChange={(e) => setLanguage(e.target.value as any)}
+                aria-label="Select language"
                 className="bg-transparent text-xs font-semibold text-white outline-none cursor-pointer"
               >
                 <option value="en" className="bg-forest text-white">EN</option>
@@ -67,13 +118,13 @@ export const LandingPage: React.FC<LandingPageProps> = ({
 
             <button
               onClick={onLoginClick}
-              className="px-4 py-2 text-sm font-semibold text-white hover:text-lime transition rounded-xl"
+              className="px-4 py-2 text-xs font-bold text-white/90 hover:text-white transition rounded-xl"
             >
               Sign In
             </button>
             <button
               onClick={onRegisterClick}
-              className="px-4 py-2 text-sm font-bold bg-lime text-forest hover:bg-lime/90 rounded-xl shadow-md transition transform active:scale-95"
+              className="px-4 py-2 text-xs font-extrabold bg-lime text-forest hover:bg-lime/90 rounded-xl shadow-sm hover:shadow-md transition active:scale-95"
             >
               Get Started
             </button>
@@ -82,104 +133,133 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       </header>
 
       {/* 2. HERO SECTION */}
-      <section className="relative overflow-hidden bg-forest text-white pt-16 pb-24 grid-texture border-b border-forest-2">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 relative z-10 grid lg:grid-cols-2 gap-12 items-center">
+      <section className="relative overflow-hidden bg-forest text-white pt-16 sm:pt-20 pb-20 sm:pb-28 grid-texture border-b border-forest-2">
+        {/* Atmospheric ambient lighting */}
+        <div className="absolute top-0 right-1/4 w-96 h-96 bg-lime/10 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute bottom-0 left-10 w-80 h-80 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
+
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 relative z-10 grid lg:grid-cols-12 gap-12 items-center">
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
+            initial={shouldReduceMotion ? false : { opacity: 0, y: 18 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
-            className="space-y-6 text-center lg:text-left"
+            transition={{ duration: shouldReduceMotion ? 0 : 0.55 }}
+            className="lg:col-span-7 space-y-6 text-center lg:text-left"
           >
-            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/10 border border-lime/30 text-lime text-xs font-bold tracking-wide uppercase">
-              <Sparkles className="w-4 h-4 text-lime" />
+            {/* Pill Tag */}
+            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/10 border border-lime/30 text-lime text-xs font-bold tracking-wide uppercase shadow-sm">
+              <Sparkles className="w-3.5 h-3.5 text-lime" />
               <span>Offline-First Agricultural Intelligence</span>
             </div>
 
-            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight leading-none text-white">
-              Protect Your Crops. <br />
+            {/* Main Headline */}
+            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight leading-[1.08] text-white">
+              Detect Crop Diseases. <br />
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-lime via-emerald-300 to-teal-200">
-                Empower Your Harvest.
+                Protect Every Harvest.
               </span>
             </h1>
 
+            {/* Subtitle */}
             <p className="text-base sm:text-lg text-white/80 max-w-xl mx-auto lg:mx-0 leading-relaxed font-normal">
-              Instant AI disease diagnosis, weather-aware chemical advisories, and regional outbreak alerts tailored for farmers, extension officers, and agricultural experts.
+              AI-assisted crop health analysis, diagnostic attention heatmaps, and rainfall-aware spray schedules — empowering growers with university-verified agronomic protection.
             </p>
 
-            <div className="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-4 pt-2">
+            {/* CTAs matching required Worked Example */}
+            <div className="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-4 pt-3">
+              {/* Worked Example: Hero CTA button: bg forest green, cream text, rounded-full, hover lifts 2px with a soft shadow, and the transition is disabled under prefers-reduced-motion */}
               <button
-                onClick={onRegisterClick}
-                className="w-full sm:w-auto px-8 py-4 bg-lime text-forest hover:bg-lime/90 font-extrabold text-base rounded-2xl shadow-xl transition flex items-center justify-center gap-2 group"
+                onClick={onExploreClick}
+                className="w-full sm:w-auto px-8 py-4 bg-forest text-cream font-bold text-sm sm:text-base rounded-full shadow-[var(--shadow-soft)] hover:-translate-y-0.5 hover:shadow-[var(--shadow-lift)] border border-lime/40 ring-2 ring-lime/20 motion-safe:transition-all motion-safe:duration-200 motion-reduce:transition-none motion-reduce:transform-none flex items-center justify-center gap-2.5 group active:translate-y-0"
               >
-                <span>Start Your Journey</span>
-                <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                <Camera className="w-5 h-5 text-lime" />
+                <span>Analyze a Leaf</span>
+                <ArrowUpRight className="w-4 h-4 text-lime/80 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
               </button>
 
               <button
-                onClick={onExploreClick}
-                className="w-full sm:w-auto px-6 py-4 bg-white/10 hover:bg-white/20 text-white border border-white/20 font-bold text-base rounded-2xl transition flex items-center justify-center gap-2"
+                onClick={() => scrollToSection("features")}
+                className="w-full sm:w-auto px-7 py-4 bg-white/10 hover:bg-white/15 text-white/90 hover:text-white border border-white/20 font-semibold text-sm sm:text-base rounded-full transition duration-200 flex items-center justify-center gap-2 active:scale-98"
               >
                 <span>Explore Features</span>
-                <ChevronRight className="w-4 h-4" />
+                <ChevronRight className="w-4 h-4 text-lime" />
               </button>
             </div>
 
-            {/* Quick Metrics */}
-            <div className="grid grid-cols-3 gap-4 pt-8 border-t border-white/10 text-center lg:text-left">
-              <div>
-                <div className="text-2xl font-black text-lime">98.4%</div>
-                <div className="text-xs text-white/70 font-medium">Diagnostic Accuracy</div>
+            {/* Real capabilities badge list (No fake numbers) */}
+            <div className="grid grid-cols-3 gap-4 pt-8 border-t border-white/15 text-center lg:text-left">
+              <div className="space-y-1">
+                <div className="text-xl sm:text-2xl font-black text-lime">Instant</div>
+                <div className="text-xs text-white/70 font-medium">On-Device Diagnosis</div>
               </div>
-              <div>
-                <div className="text-2xl font-black text-lime">100%</div>
-                <div className="text-xs text-white/70 font-medium">Offline Capable</div>
+              <div className="space-y-1">
+                <div className="text-xl sm:text-2xl font-black text-lime">100%</div>
+                <div className="text-xs text-white/70 font-medium">Offline Queued Sync</div>
               </div>
-              <div>
-                <div className="text-2xl font-black text-lime">TNAU</div>
-                <div className="text-xs text-white/70 font-medium">Verified Guidance</div>
+              <div className="space-y-1">
+                <div className="text-xl sm:text-2xl font-black text-lime">TNAU & ICAR</div>
+                <div className="text-xs text-white/70 font-medium">Aligned Protocols</div>
               </div>
             </div>
           </motion.div>
 
           {/* Hero Visual Card Showcase */}
           <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
+            initial={shouldReduceMotion ? false : { opacity: 0, scale: 0.96 }}
             animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.6, delay: 0.2 }}
-            className="relative"
+            transition={{ duration: shouldReduceMotion ? 0 : 0.6, delay: shouldReduceMotion ? 0 : 0.15 }}
+            className="lg:col-span-5 relative"
           >
-            <div className="relative mx-auto max-w-md bg-white/10 backdrop-blur-xl border border-white/20 p-6 rounded-3xl shadow-2xl space-y-4">
-              {/* Simulated Scan Card */}
-              <div className="flex items-center justify-between border-b border-white/10 pb-3">
+            <div className="relative mx-auto max-w-md bg-white/10 backdrop-blur-xl border border-white/20 p-5 sm:p-6 rounded-3xl shadow-2xl space-y-4">
+              {/* Header */}
+              <div className="flex items-center justify-between border-b border-white/15 pb-3">
                 <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 rounded-full bg-lime animate-ping" />
-                  <span className="text-xs font-bold text-lime uppercase tracking-wider">Live Scan Demo</span>
+                  <span className="relative flex h-2.5 w-2.5">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-lime opacity-75" />
+                    <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-lime" />
+                  </span>
+                  <span className="text-xs font-bold text-lime uppercase tracking-wider">Diagnostic Analysis</span>
                 </div>
-                <span className="text-xs bg-lime/20 text-lime px-2.5 py-0.5 rounded-full font-bold">Tomato Crop</span>
+                <span className="text-[11px] bg-lime/20 text-lime px-2.5 py-0.5 rounded-full font-bold">
+                  Tomato Crop
+                </span>
               </div>
 
-              <div className="relative aspect-video rounded-2xl overflow-hidden bg-forest-2 grid-texture flex items-center justify-center border border-lime/30">
+              {/* Photo with Graceful Fallback */}
+              <div className="relative aspect-video rounded-2xl overflow-hidden bg-forest-2 farm-gradient-fallback border border-lime/30 group">
                 <img
-                  src="https://images.unsplash.com/photo-1592417817098-8f3d6eb1475a?w=600&auto=format&fit=crop"
-                  alt="Leaf Scan Sample"
-                  className="w-full h-full object-cover opacity-90"
+                  src="/images/farmer_crop_inspection.jpg"
+                  alt="Farmer inspecting crop leaf"
+                  className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                  onError={(e) => {
+                    // Graceful fallback to gradient background if local image is unavailable
+                    (e.target as HTMLElement).style.display = "none";
+                  }}
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-forest/90 via-transparent to-transparent flex items-end p-4">
+                <div className="absolute inset-0 bg-gradient-to-t from-forest/95 via-forest/30 to-transparent flex items-end p-4">
                   <div className="text-left space-y-1">
-                    <span className="text-xs font-extrabold text-lime bg-forest/80 px-2 py-0.5 rounded-md">Early Blight (94%)</span>
-                    <p className="text-[11px] text-white/90">Immediate treatment & weather window ready</p>
+                    <span className="text-xs font-extrabold text-lime bg-forest/90 px-2.5 py-1 rounded-lg border border-lime/30 shadow-sm inline-block">
+                      Early Blight Identified (94%)
+                    </span>
+                    <p className="text-xs text-white/90">Concentric brown lesions detected on lower canopy</p>
                   </div>
                 </div>
               </div>
 
+              {/* Advisory Metrics */}
               <div className="grid grid-cols-2 gap-3 text-xs">
-                <div className="bg-white/10 p-3 rounded-xl border border-white/10">
-                  <span className="text-white/60 font-medium">Spray Window:</span>
-                  <div className="text-amber-300 font-bold mt-0.5">⚠️ Rain Expected</div>
+                <div className="bg-white/10 p-3 rounded-2xl border border-white/10 space-y-1">
+                  <span className="text-white/70 font-medium">Spraying Forecast</span>
+                  <div className="text-amber-300 font-bold flex items-center gap-1">
+                    <CloudRain className="w-3.5 h-3.5" />
+                    <span>Rain Expected (82%)</span>
+                  </div>
                 </div>
-                <div className="bg-white/10 p-3 rounded-xl border border-white/10">
-                  <span className="text-white/60 font-medium">Verified Organic:</span>
-                  <div className="text-lime font-bold mt-0.5">Neem Oil 5ml/L</div>
+                <div className="bg-white/10 p-3 rounded-2xl border border-white/10 space-y-1">
+                  <span className="text-white/70 font-medium">Recommended Remedy</span>
+                  <div className="text-lime font-bold flex items-center gap-1">
+                    <Sprout className="w-3.5 h-3.5" />
+                    <span>Neem Oil 5ml/L</span>
+                  </div>
                 </div>
               </div>
             </div>
@@ -190,124 +270,132 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       {/* 3. FEATURES SECTION */}
       <section id="features" className="py-20 max-w-7xl mx-auto px-4 sm:px-6 space-y-12">
         <div className="text-center space-y-3 max-w-2xl mx-auto">
-          <span className="text-xs font-extrabold text-forest-2 uppercase tracking-widest bg-lime/30 px-3 py-1 rounded-full">
-            Comprehensive Suite
+          <span className="text-xs font-extrabold text-forest uppercase tracking-widest bg-lime/40 px-3.5 py-1 rounded-full inline-block">
+            Comprehensive Capability
           </span>
           <h2 className="text-3xl sm:text-4xl font-black text-forest">
-            Everything You Need for Healthy Crops
+            Engineered for Precision Agriculture
           </h2>
           <p className="text-sm sm:text-base text-ink-2">
-            Engineered for farm ergonomics, multi-role collaboration, and offline reliability.
+            Multi-stage diagnostics, real-time spatial alerts, and practical guidance built for extreme field conditions.
           </p>
         </div>
 
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {/* Card 1 */}
-          <div className="bg-white rounded-3xl p-6 border border-line shadow-sm hover:shadow-md transition space-y-4">
+        <motion.div 
+          variants={containerVariants}
+          initial="hidden"
+          whileInView="show"
+          viewport={{ once: true, margin: "-40px" }}
+          className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6"
+        >
+          {/* Feature 1 */}
+          <motion.div variants={itemVariants} className="bg-white rounded-3xl p-6 sm:p-7 border border-line shadow-[var(--shadow-soft)] hover:shadow-[var(--shadow-lift)] transition-all space-y-4">
             <div className="w-12 h-12 rounded-2xl bg-forest/10 text-forest flex items-center justify-center">
               <Camera className="w-6 h-6" />
             </div>
             <h3 className="text-xl font-bold text-forest">AI Leaf Disease Scanner</h3>
             <p className="text-xs sm:text-sm text-ink-2 leading-relaxed">
-              Multi-stage scanning pipeline analyzes leaf symptoms, assesses confidence levels, and flags image quality issues before diagnosis.
+              Multi-stage scanning pipeline analyzes leaf symptoms, detects image quality errors (blur, poor lighting), and predicts infection stages.
             </p>
-          </div>
+          </motion.div>
 
-          {/* Card 2 */}
-          <div className="bg-white rounded-3xl p-6 border border-line shadow-sm hover:shadow-md transition space-y-4">
+          {/* Feature 2 */}
+          <motion.div variants={itemVariants} className="bg-white rounded-3xl p-6 sm:p-7 border border-line shadow-[var(--shadow-soft)] hover:shadow-[var(--shadow-lift)] transition-all space-y-4">
             <div className="w-12 h-12 rounded-2xl bg-emerald-100 text-emerald-800 flex items-center justify-center">
-              <Sprout className="w-6 h-6" />
+              <Layers className="w-6 h-6" />
             </div>
             <h3 className="text-xl font-bold text-forest">Explainable Heatmaps</h3>
             <p className="text-xs sm:text-sm text-ink-2 leading-relaxed">
-              Grad-CAM attention maps highlight exact lesion locations on the leaf, explaining why the model identified a specific condition.
+              Grad-CAM attention overlays highlight exact lesion boundaries on the leaf, explaining the evidence behind every diagnosis.
             </p>
-          </div>
+          </motion.div>
 
-          {/* Card 3 */}
-          <div className="bg-white rounded-3xl p-6 border border-line shadow-sm hover:shadow-md transition space-y-4">
+          {/* Feature 3 */}
+          <motion.div variants={itemVariants} className="bg-white rounded-3xl p-6 sm:p-7 border border-line shadow-[var(--shadow-soft)] hover:shadow-[var(--shadow-lift)] transition-all space-y-4">
             <div className="w-12 h-12 rounded-2xl bg-blue-100 text-blue-800 flex items-center justify-center">
               <CloudRain className="w-6 h-6" />
             </div>
             <h3 className="text-xl font-bold text-forest">Weather-Aware Spraying</h3>
             <p className="text-xs sm:text-sm text-ink-2 leading-relaxed">
-              Integrated weather engine predicts rainfall and humidity windows to prevent chemical waste and runoff into nearby soil.
+              Real-time precipitation forecasting advises safe spraying windows to prevent costly chemical wash-off and environmental damage.
             </p>
-          </div>
+          </motion.div>
 
-          {/* Card 4 */}
-          <div className="bg-white rounded-3xl p-6 border border-line shadow-sm hover:shadow-md transition space-y-4">
+          {/* Feature 4 */}
+          <motion.div variants={itemVariants} className="bg-white rounded-3xl p-6 sm:p-7 border border-line shadow-[var(--shadow-soft)] hover:shadow-[var(--shadow-lift)] transition-all space-y-4">
             <div className="w-12 h-12 rounded-2xl bg-amber-100 text-amber-800 flex items-center justify-center">
               <AlertTriangle className="w-6 h-6" />
             </div>
             <h3 className="text-xl font-bold text-forest">District Outbreak Alerts</h3>
             <p className="text-xs sm:text-sm text-ink-2 leading-relaxed">
-              Real-time spatial risk scores and outbreak warnings sent by Agriculture Officers to alert farmers in high-risk cluster zones.
+              Proactive geographical risk scoring and pathogen spread warnings coordinated directly with local Agriculture Officers.
             </p>
-          </div>
+          </motion.div>
 
-          {/* Card 5 */}
-          <div className="bg-white rounded-3xl p-6 border border-line shadow-sm hover:shadow-md transition space-y-4">
+          {/* Feature 5 */}
+          <motion.div variants={itemVariants} className="bg-white rounded-3xl p-6 sm:p-7 border border-line shadow-[var(--shadow-soft)] hover:shadow-[var(--shadow-lift)] transition-all space-y-4">
             <div className="w-12 h-12 rounded-2xl bg-teal-100 text-teal-800 flex items-center justify-center">
               <Bot className="w-6 h-6" />
             </div>
-            <h3 className="text-xl font-bold text-forest">AI Farming Assistant</h3>
+            <h3 className="text-xl font-bold text-forest">Grounded AI Agronomist</h3>
             <p className="text-xs sm:text-sm text-ink-2 leading-relaxed">
-              Ground-truth RAG knowledge base backed by Gemini AI provides voice & text advice in Tamil, Hindi, and English.
+              RAG knowledge base delivering conversational guidance in Tamil, Hindi, and English, backed by university-published extension literature.
             </p>
-          </div>
+          </motion.div>
 
-          {/* Card 6 */}
-          <div className="bg-white rounded-3xl p-6 border border-line shadow-sm hover:shadow-md transition space-y-4">
+          {/* Feature 6 */}
+          <motion.div variants={itemVariants} className="bg-white rounded-3xl p-6 sm:p-7 border border-line shadow-[var(--shadow-soft)] hover:shadow-[var(--shadow-lift)] transition-all space-y-4">
             <div className="w-12 h-12 rounded-2xl bg-purple-100 text-purple-800 flex items-center justify-center">
               <BarChart3 className="w-6 h-6" />
             </div>
-            <h3 className="text-xl font-bold text-forest">Market & Cost Analytics</h3>
+            <h3 className="text-xl font-bold text-forest">Treatment Cost Planning</h3>
             <p className="text-xs sm:text-sm text-ink-2 leading-relaxed">
-              Estimated treatment cost per acre, local mandi price trends, and direct government subsidy application access.
+              Transparent cost-per-acre estimates for both organic and chemical protocols with pre-harvest safety interval calculations.
             </p>
-          </div>
-        </div>
+          </motion.div>
+        </motion.div>
       </section>
 
       {/* 4. HOW IT WORKS SECTION */}
       <section id="how-it-works" className="py-20 bg-white border-y border-line">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 space-y-12">
           <div className="text-center space-y-3 max-w-2xl mx-auto">
-            <span className="text-xs font-extrabold text-forest uppercase tracking-widest bg-lime/40 px-3 py-1 rounded-full">
-              3 Simple Steps
+            <span className="text-xs font-extrabold text-forest uppercase tracking-widest bg-lime/40 px-3.5 py-1 rounded-full inline-block">
+              Field Workflow
             </span>
-            <h2 className="text-3xl sm:text-4xl font-black text-forest">How CropGuard Works</h2>
+            <h2 className="text-3xl sm:text-4xl font-black text-forest">
+              Three Steps to Harvest Security
+            </h2>
           </div>
 
           <div className="grid md:grid-cols-3 gap-8">
-            <div className="space-y-4 text-center p-6 rounded-3xl bg-paper border border-line">
+            <div className="space-y-4 text-center p-7 rounded-3xl bg-paper border border-line shadow-sm">
               <div className="w-14 h-14 rounded-2xl bg-forest text-lime font-black text-xl flex items-center justify-center mx-auto shadow-md">
                 1
               </div>
-              <h3 className="text-lg font-bold text-forest">Snap or Upload Leaf Photo</h3>
+              <h3 className="text-lg font-bold text-forest">Snap Leaf Photo</h3>
               <p className="text-xs sm:text-sm text-ink-2 leading-relaxed">
-                Take a clear leaf photograph in your field. Works seamlessly offline without an active internet connection.
+                Take a clear leaf photograph in your field. Works seamlessly offline even in remote zones without cell coverage.
               </p>
             </div>
 
-            <div className="space-y-4 text-center p-6 rounded-3xl bg-paper border border-line">
+            <div className="space-y-4 text-center p-7 rounded-3xl bg-paper border border-line shadow-sm">
               <div className="w-14 h-14 rounded-2xl bg-forest text-lime font-black text-xl flex items-center justify-center mx-auto shadow-md">
                 2
               </div>
-              <h3 className="text-lg font-bold text-forest">AI & Weather Intelligence</h3>
+              <h3 className="text-lg font-bold text-forest">AI Symptom Diagnosis</h3>
               <p className="text-xs sm:text-sm text-ink-2 leading-relaxed">
-                CropGuard evaluates leaf health, verifies image quality, checks forecast rain probability, and matches symptoms.
+                Vision models inspect symptoms, assess confidence, generate explainable heatmaps, and evaluate current weather conditions.
               </p>
             </div>
 
-            <div className="space-y-4 text-center p-6 rounded-3xl bg-paper border border-line">
+            <div className="space-y-4 text-center p-7 rounded-3xl bg-paper border border-line shadow-sm">
               <div className="w-14 h-14 rounded-2xl bg-forest text-lime font-black text-xl flex items-center justify-center mx-auto shadow-md">
                 3
               </div>
-              <h3 className="text-lg font-bold text-forest">Actionable Verified Guidance</h3>
+              <h3 className="text-lg font-bold text-forest">Verified Action Plan</h3>
               <p className="text-xs sm:text-sm text-ink-2 leading-relaxed">
-                Receive organic remedies, verified chemical dosages, cost estimates, and escalation options for expert review.
+                Receive certified organic options, chemical dosages with spray safety windows, and direct escalation to university experts.
               </p>
             </div>
           </div>
@@ -318,43 +406,45 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       <section id="benefits" className="py-20 max-w-7xl mx-auto px-4 sm:px-6 space-y-12">
         <div className="grid lg:grid-cols-2 gap-12 items-center">
           <div className="space-y-6">
-            <span className="text-xs font-extrabold text-forest-2 uppercase tracking-widest bg-lime/30 px-3 py-1 rounded-full">
-              Built for Farmers & Experts
+            <span className="text-xs font-extrabold text-forest uppercase tracking-widest bg-lime/40 px-3.5 py-1 rounded-full inline-block">
+              Field-Tested Trust
             </span>
             <h2 className="text-3xl sm:text-4xl font-black text-forest">
-              Why Agriculture Specialists Trust CropGuard
+              Built for Farmers, Agronomists & Officers
             </h2>
             <ul className="space-y-4 text-sm font-semibold text-ink">
               <li className="flex items-start gap-3">
                 <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
-                <span><strong>Zero Network Interruption:</strong> Scans saved locally on device and automatically synced when connectivity resumes.</span>
+                <span><strong>Zero Network Interruption:</strong> Local IndexedDB stores all scans and automatically syncs when connectivity resumes.</span>
               </li>
               <li className="flex items-start gap-3">
                 <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
-                <span><strong>Prevent Input Waste:</strong> Rain probability windows stop chemical sprays from washing away into soil.</span>
+                <span><strong>Prevent Chemical Waste:</strong> Rain probability calculations stop pesticide spraying right before heavy rainfall.</span>
               </li>
               <li className="flex items-start gap-3">
                 <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
-                <span><strong>TNAU & ICAR Compliance:</strong> Recommendations aligned with verified government agricultural extension standards.</span>
+                <span><strong>Standardized Extension Guidance:</strong> Recommendations align with TNAU and ICAR package of agricultural practices.</span>
               </li>
               <li className="flex items-start gap-3">
                 <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
-                <span><strong>Expert Escalation:</strong> Flag low-confidence diagnoses directly to university extension scientists.</span>
+                <span><strong>Expert Review Escalation:</strong> Low-confidence diagnoses are routed to university plant pathologists with one click.</span>
               </li>
             </ul>
           </div>
 
-          <div className="bg-forest text-white p-8 rounded-3xl shadow-xl grid-texture space-y-6">
-            <h3 className="text-2xl font-black text-lime">Ready to Transform Your Yield?</h3>
-            <p className="text-sm text-white/80 leading-relaxed">
-              Join thousands of farmers, plant pathology experts, and agricultural officers building a safer, higher-yielding harvest.
+          <div className="bg-forest text-white p-8 sm:p-10 rounded-3xl shadow-xl grid-texture border border-forest-2 space-y-6">
+            <h3 className="text-2xl sm:text-3xl font-black text-lime">
+              Ready to Safeguard Your Crop Yield?
+            </h3>
+            <p className="text-sm text-white/80 leading-relaxed font-normal">
+              Join farming communities and agricultural specialists leveraging AI intelligence to diagnose diseases early and minimize chemical costs.
             </p>
             <button
               onClick={onRegisterClick}
-              className="w-full py-4 bg-lime text-forest font-extrabold text-base rounded-2xl hover:bg-lime/90 transition shadow-lg flex items-center justify-center gap-2"
+              className="w-full py-4 bg-lime text-forest font-extrabold text-base rounded-2xl hover:bg-lime/90 transition shadow-lg flex items-center justify-center gap-2 active:scale-98"
             >
               <span>Create Your Account</span>
-              <ArrowRight className="w-5 h-5" />
+              <ChevronRight className="w-5 h-5" />
             </button>
           </div>
         </div>
@@ -364,43 +454,43 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       <footer className="bg-forest text-white border-t border-forest-2 py-12">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 grid sm:grid-cols-2 lg:grid-cols-4 gap-8 mb-8 text-xs">
           <div className="space-y-3">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2.5">
               <Shield className="w-5 h-5 text-lime" />
               <span className="text-base font-extrabold text-white">CropGuard AI</span>
             </div>
-            <p className="text-white/70 leading-relaxed">
-              Protect Your Crops. Empower Your Harvest. Offline-first plant pathology intelligence platform.
+            <p className="text-white/70 leading-relaxed font-normal">
+              Detect Crop Diseases. Protect Every Harvest. Offline-first plant pathology intelligence platform.
             </p>
           </div>
 
           <div className="space-y-2">
             <h4 className="font-bold text-lime uppercase tracking-wider text-[11px]">Platform</h4>
-            <ul className="space-y-1.5 text-white/80 font-medium">
-              <li><button onClick={() => scrollToSection("features")} className="hover:text-lime">AI Leaf Scanner</button></li>
-              <li><button onClick={() => scrollToSection("features")} className="hover:text-lime">Disease Risk Engine</button></li>
-              <li><button onClick={() => scrollToSection("features")} className="hover:text-lime">Weather Advisories</button></li>
+            <ul className="space-y-2 text-white/80 font-medium">
+              <li><button onClick={() => scrollToSection("features")} className="hover:text-lime transition">AI Leaf Scanner</button></li>
+              <li><button onClick={() => scrollToSection("features")} className="hover:text-lime transition">Disease Risk Engine</button></li>
+              <li><button onClick={() => scrollToSection("features")} className="hover:text-lime transition">Weather Advisories</button></li>
             </ul>
           </div>
 
           <div className="space-y-2">
-            <h4 className="font-bold text-lime uppercase tracking-wider text-[11px]">Roles</h4>
-            <ul className="space-y-1.5 text-white/80 font-medium">
-              <li><button onClick={onRegisterClick} className="hover:text-lime">Farmer Portal</button></li>
-              <li><button onClick={onRegisterClick} className="hover:text-lime">Expert Portal</button></li>
-              <li><button onClick={onRegisterClick} className="hover:text-lime">Officer Dashboard</button></li>
+            <h4 className="font-bold text-lime uppercase tracking-wider text-[11px]">Portals</h4>
+            <ul className="space-y-2 text-white/80 font-medium">
+              <li><button onClick={onRegisterClick} className="hover:text-lime transition">Farmer Portal</button></li>
+              <li><button onClick={onRegisterClick} className="hover:text-lime transition">Expert Portal</button></li>
+              <li><button onClick={onRegisterClick} className="hover:text-lime transition">Officer Dashboard</button></li>
             </ul>
           </div>
 
           <div className="space-y-2">
-            <h4 className="font-bold text-lime uppercase tracking-wider text-[11px]">Agricultural Verification</h4>
-            <p className="text-white/70 leading-relaxed">
-              In collaboration with TNAU Agritech & ICAR Extension Advisory Board.
+            <h4 className="font-bold text-lime uppercase tracking-wider text-[11px]">Agronomic Verification</h4>
+            <p className="text-white/70 leading-relaxed font-normal">
+              In collaboration with state agricultural universities and extension advisory councils.
             </p>
           </div>
         </div>
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-6 border-t border-white/10 text-center text-xs text-white/60">
-          © {new Date().getFullYear()} CropGuard AI. All rights reserved.
+          © {CURRENT_YEAR} CropGuard AI. All rights reserved.
         </div>
       </footer>
     </div>

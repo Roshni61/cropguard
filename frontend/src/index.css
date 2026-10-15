@@ -1,39 +1,99 @@
-@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Manrope:wght@600;700;800&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@500;600;700;800&family=Manrope:wght@600;700;800&display=swap");
 @import "tailwindcss";
 
 @theme {
-  --color-paper: #F5F6EF;
-  --color-forest: #123B2A;
-  --color-forest-2: #285C40;
-  --color-lime: #C5F078;
-  --color-ink: #18251D;
-  --color-ink-2: #68746A;
-  --color-line: #DCE4D8;
-  --font-display: "Manrope", "Plus Jakarta Sans", system-ui, sans-serif;
+  --color-paper: #F7F8F1;
+  --color-cream: #FAF9F3;
+  --color-cream-card: #FFFFFF;
+  --color-forest: #113426;
+  --color-forest-dark: #0A2218;
+  --color-forest-hover: #0E2A1E;
+  --color-forest-2: #1E503A;
+  --color-forest-light: #2A664B;
+  --color-leaf: #337A4B;
+  --color-leaf-light: #EBF5EE;
+  --color-lime: #C6F077;
+  --color-lime-glow: rgba(198, 240, 119, 0.45);
+  --color-ink: #14231A;
+  --color-ink-2: #5B6D62;
+  --color-ink-3: #8C9C92;
+  --color-line: #DFE6DB;
+  --color-line-dark: #1E4433;
+  --font-display: "Plus Jakarta Sans", "Manrope", system-ui, sans-serif;
   --font-sans: "Inter", system-ui, sans-serif;
 }
 
 :root {
   --ease: cubic-bezier(0.22, 1, 0.36, 1);
-  --shadow-soft: 0 1px 2px rgba(18,59,42,.06), 0 12px 32px -12px rgba(18,59,42,.18);
+  --shadow-soft: 0 2px 4px rgba(17, 52, 38, 0.04), 0 10px 24px -6px rgba(17, 52, 38, 0.08);
+  --shadow-lift: 0 4px 12px rgba(17, 52, 38, 0.08), 0 20px 36px -10px rgba(17, 52, 38, 0.16);
+  --shadow-glow: 0 0 30px rgba(198, 240, 119, 0.3);
 }
 
 @layer base {
-  body { @apply bg-paper text-ink antialiased font-sans; font-variant-numeric: tabular-nums; }
-  h1, h2, h3 { font-family: var(--font-display); letter-spacing: -0.02em; }
-  :focus-visible { outline: 2px solid var(--color-forest-2); outline-offset: 2px; border-radius: 6px; }
+  body {
+    background-color: var(--color-paper);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    font-variant-numeric: tabular-nums;
+  }
+  h1, h2, h3, h4 {
+    font-family: var(--font-display);
+    letter-spacing: -0.025em;
+  }
+  :focus-visible {
+    outline: 2px solid var(--color-forest-2);
+    outline-offset: 2px;
+    border-radius: 8px;
+  }
 }
 
 .grid-texture {
   background-image:
-    linear-gradient(rgba(197,240,120,.09) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(197,240,120,.09) 1px, transparent 1px);
-  background-size: 28px 28px;
+    linear-gradient(rgba(198, 240, 119, 0.07) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(198, 240, 119, 0.07) 1px, transparent 1px);
+  background-size: 32px 32px;
 }
 
-@keyframes shake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-4px)} 75%{transform:translateX(4px)} }
-.animate-shake { animation: shake .4s ease-in-out; }
+.farm-gradient-fallback {
+  background: radial-gradient(circle at 80% 20%, #1E503A 0%, #113426 50%, #0A2218 100%);
+}
 
+.skeleton-shimmer {
+  background: linear-gradient(90deg, #EDF2EB 25%, #F7FAF5 50%, #EDF2EB 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.8s infinite;
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-4px); }
+  75% { transform: translateX(4px); }
+}
+.animate-shake {
+  animation: shake 0.4s ease-in-out;
+}
+
+@keyframes gentle-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.85; transform: scale(1.02); }
+}
+.animate-gentle-pulse {
+  animation: gentle-pulse 3s infinite ease-in-out;
+}
+
+/* Reduced motion preference override */
 @media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
 }

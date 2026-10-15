@@ -49,7 +49,7 @@ export const LeafScanner: React.FC<Props> = ({ src, stage, active }) => {
                 style={{ left: `${p.x}%`, top: `${p.y}%` }}
                 initial={{ opacity: 0, scale: 0.4 }}
                 animate={stage >= 2 + Math.floor(i / 2) ? { opacity: 1, scale: 1 } : {}}
-                transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+                transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] as const }}
               />
             ))}
           </>
