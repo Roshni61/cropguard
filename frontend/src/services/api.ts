@@ -288,3 +288,89 @@ export const syncOfflineScansWithServer = async () => {
   }
   return 0;
 };
+
+export const fetchOfficerStats = async (district = "Coimbatore") => {
+  try {
+    const res = await fetch(`${API_BASE}/officer/dashboard-stats?district=${encodeURIComponent(district)}`, {
+      headers: getAuthHeaders(),
+    });
+    if (res.ok) {
+      const json = await res.json();
+      return json.data || null;
+    }
+  } catch (e) {
+    console.warn("Officer stats API unavailable:", e);
+  }
+  return null;
+};
+
+export const broadcastOfficerAlertAPI = async (data: {
+  title: string;
+  message: string;
+  district?: string;
+  crop?: string;
+  disease?: string;
+  alert_type?: string;
+  sender_name?: string;
+}) => {
+  const res = await fetch(`${API_BASE}/officer/broadcast-alert`, {
+    method: "POST",
+    headers: getAuthHeaders(),
+    body: JSON.stringify(data),
+  });
+  const json = await res.json();
+  if (!res.ok) {
+    throw new Error(json.detail || "Failed to broadcast alert.");
+  }
+  return json;
+};
+
+export const fetchOfficerAlerts = async (district = "Coimbatore") => {
+  try {
+    const res = await fetch(`${API_BASE}/officer/alerts?district=${encodeURIComponent(district)}`, {
+      headers: getAuthHeaders(),
+    });
+    if (res.ok) {
+      const json = await res.json();
+      return json.data || [];
+    }
+  } catch (e) {
+    console.warn("Officer alerts API unavailable:", e);
+  }
+  return [];
+};
+
+export const fetchExpertCases = async () => {
+  try {
+    const res = await fetch(`${API_BASE}/experts/cases`, {
+      headers: getAuthHeaders(),
+    });
+    if (res.ok) {
+      const json = await res.json();
+      return json.data || [];
+    }
+  } catch (e) {
+    console.warn("Expert cases API unavailable:", e);
+  }
+  return [];
+};
+
+export const reviewExpertCaseAPI = async (data: {
+  case_id: string;
+  status: string;
+  expert_diagnosis: string;
+  expert_notes?: string;
+  expert_treatment?: string;
+  expert_name?: string;
+}) => {
+  const res = await fetch(`${API_BASE}/experts/review`, {
+    method: "POST",
+    headers: getAuthHeaders(),
+    body: JSON.stringify(data),
+  });
+  const json = await res.json();
+  if (!res.ok) {
+    throw new Error(json.detail || "Failed to submit expert review.");
+  }
+  return json;
+};

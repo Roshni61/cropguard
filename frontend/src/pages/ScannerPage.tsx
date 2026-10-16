@@ -28,6 +28,8 @@ export const ScannerPage: React.FC<ScannerPageProps> = ({ onDiagnosisComplete, s
   const [qualityError, setQualityError] = useState<string | null>(null);
   const shouldReduceMotion = useReducedMotion();
 
+  const isDemoMode = import.meta.env.VITE_DEMO_MODE === "true";
+
   useEffect(() => {
     return () => {
       if (preview) URL.revokeObjectURL(preview);
@@ -60,7 +62,10 @@ export const ScannerPage: React.FC<ScannerPageProps> = ({ onDiagnosisComplete, s
     setIsAnalyzing(false);
 
     if (res.success) {
-      onDiagnosisComplete(res.data);
+      onDiagnosisComplete({
+        ...res.data,
+        is_demo_sample: isSample,
+      });
     } else if (res.quality && res.quality.status !== "GOOD") {
       setQualityError(res.quality.reasons?.[0] || "Image quality is insufficient. Please hold steady and retake the photo.");
     } else {
@@ -92,10 +97,10 @@ export const ScannerPage: React.FC<ScannerPageProps> = ({ onDiagnosisComplete, s
       initial={shouldReduceMotion ? false : { opacity: 0, y: 12 }} 
       animate={{ opacity: 1, y: 0 }} 
       transition={{ duration: shouldReduceMotion ? 0 : 0.35, ease: [0.22, 1, 0.36, 1] as const }} 
-      className="mx-auto max-w-3xl space-y-6 pb-16"
+      className="mx-auto max-w-3xl space-y-6 pt-4 sm:pt-6 pb-16"
     >
-      {/* Header */}
-      <header className="space-y-1.5">
+      {/* Header - spacing prevents clipping under sticky navbar */}
+      <header className="space-y-1.5 pt-1">
         <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-forest/10 text-forest text-xs font-bold uppercase tracking-wider">
           <Sprout className="w-3.5 h-3.5" />
           <span>Pathology Vision Scanner</span>
@@ -131,7 +136,7 @@ export const ScannerPage: React.FC<ScannerPageProps> = ({ onDiagnosisComplete, s
         className="hidden" 
       />
 
-      {/* Action Buttons with Hero CTA Button Styling */}
+      {/* Action Buttons */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
         <button 
           onClick={() => fileInputRef.current?.click()} 
@@ -152,26 +157,28 @@ export const ScannerPage: React.FC<ScannerPageProps> = ({ onDiagnosisComplete, s
         </button>
       </div>
 
-      {/* Demo Samples Showcase */}
-      <section className="rounded-3xl border border-line bg-white p-5 shadow-sm space-y-3">
-        <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-ink-2">
-          <Sparkles className="h-4 w-4 text-forest" aria-hidden /> 
-          <span>Demo Calibration Samples (Offline Test Suite)</span>
-        </div>
-        <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
-          {SAMPLES.map(([key, label, file]) => (
-            <button 
-              key={key} 
-              disabled={isAnalyzing} 
-              onClick={() => processImageFile(new File(["demo"], file, { type: "image/jpeg" }), true)} 
-              className="min-h-12 rounded-2xl border border-line px-3.5 py-2 text-xs sm:text-sm font-semibold text-ink transition-all hover:border-forest-2 hover:bg-paper hover:-translate-y-0.5 active:translate-y-0 disabled:opacity-50 cursor-pointer text-left flex items-center justify-between"
-            >
-              <span className="truncate">{label}</span>
-              <span className="text-[10px] text-forest/70 font-bold shrink-0 ml-1">Run</span>
-            </button>
-          ))}
-        </div>
-      </section>
+      {/* Demo Samples Showcase - Hidden in Production, shown only when VITE_DEMO_MODE=true */}
+      {isDemoMode && (
+        <section className="rounded-3xl border border-line bg-white p-5 shadow-sm space-y-3">
+          <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-ink-2">
+            <Sparkles className="h-4 w-4 text-forest" aria-hidden /> 
+            <span>Demo Calibration Samples (Offline Test Suite)</span>
+          </div>
+          <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
+            {SAMPLES.map(([key, label, file]) => (
+              <button 
+                key={key} 
+                disabled={isAnalyzing} 
+                onClick={() => processImageFile(new File(["demo"], file, { type: "image/jpeg" }), true)} 
+                className="min-h-12 rounded-2xl border border-line px-3.5 py-2.5 text-xs sm:text-sm font-semibold text-ink transition-all hover:border-forest-2 hover:bg-paper hover:-translate-y-0.5 active:translate-y-0 disabled:opacity-50 cursor-pointer text-left flex items-center justify-between"
+              >
+                <span className="text-xs font-semibold leading-snug break-words pr-1">{label}</span>
+                <span className="text-[10px] text-forest/70 font-bold shrink-0 ml-1">Run</span>
+              </button>
+            ))}
+          </div>
+        </section>
+      )}
     </motion.div>
   );
 };

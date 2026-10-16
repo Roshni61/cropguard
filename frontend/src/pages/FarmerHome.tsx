@@ -20,6 +20,7 @@ export const FarmerHome: React.FC<FarmerHomeProps> = ({
 }) => {
   const { t } = useTranslation();
   const shouldReduceMotion = useReducedMotion();
+  const isDemoMode = import.meta.env.VITE_DEMO_MODE === "true";
 
   const containerVariants = {
     hidden: { opacity: shouldReduceMotion ? 1 : 0 },
@@ -100,79 +101,81 @@ export const FarmerHome: React.FC<FarmerHomeProps> = ({
         </p>
       </motion.div>
 
-      {/* 3. Demo Sample Testers */}
-      <motion.div 
-        variants={itemVariants}
-        className="bg-cream border border-line rounded-3xl p-5 shadow-sm"
-      >
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-2">
-            <Sparkles className="w-4 h-4 text-forest" />
-            <span className="text-xs font-bold text-forest uppercase tracking-wider">
-              Diagnostic Test Samples
+      {/* 3. Demo Sample Testers - Hidden in production unless VITE_DEMO_MODE=true */}
+      {isDemoMode && (
+        <motion.div 
+          variants={itemVariants}
+          className="bg-cream border border-line rounded-3xl p-5 shadow-sm"
+        >
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <Sparkles className="w-4 h-4 text-forest" />
+              <span className="text-xs font-bold text-forest uppercase tracking-wider">
+                Diagnostic Test Samples
+              </span>
+            </div>
+            <span className="text-[10px] bg-forest/10 text-forest px-2.5 py-0.5 rounded-full font-bold">
+              Demo Test
             </span>
           </div>
-          <span className="text-[10px] bg-forest/10 text-forest px-2.5 py-0.5 rounded-full font-bold">
-            1-Click Test
-          </span>
-        </div>
 
-        <div className="grid grid-cols-3 sm:grid-cols-6 gap-2.5">
-          <button
-            onClick={() => onSelectSampleImage("early_blight")}
-            className="p-3 bg-white border border-line rounded-2xl text-center text-xs hover:border-forest-2 hover:shadow-sm transition-all hover:-translate-y-0.5 active:translate-y-0 cursor-pointer"
-          >
-            <div className="text-xl mb-1">🍅</div>
-            <div className="font-bold text-ink text-[11px] truncate">Early Blight</div>
-            <div className="text-[9px] text-leaf font-bold">High Conf</div>
-          </button>
+          <div className="grid grid-cols-3 sm:grid-cols-6 gap-2.5">
+            <button
+              onClick={() => onSelectSampleImage("early_blight")}
+              className="p-3 bg-white border border-line rounded-2xl text-center text-xs hover:border-forest-2 hover:shadow-sm transition-all hover:-translate-y-0.5 active:translate-y-0 cursor-pointer"
+            >
+              <div className="text-xl mb-1">🍅</div>
+              <div className="font-bold text-ink text-[11px] truncate">Early Blight</div>
+              <div className="text-[9px] text-leaf font-bold">High Conf</div>
+            </button>
 
-          <button
-            onClick={() => onSelectSampleImage("late_blight")}
-            className="p-3 bg-white border border-line rounded-2xl text-center text-xs hover:border-forest-2 hover:shadow-sm transition-all hover:-translate-y-0.5 active:translate-y-0 cursor-pointer"
-          >
-            <div className="text-xl mb-1">🍂</div>
-            <div className="font-bold text-ink text-[11px] truncate">Late Blight</div>
-            <div className="text-[9px] text-amber-700 font-bold">Severe</div>
-          </button>
+            <button
+              onClick={() => onSelectSampleImage("late_blight")}
+              className="p-3 bg-white border border-line rounded-2xl text-center text-xs hover:border-forest-2 hover:shadow-sm transition-all hover:-translate-y-0.5 active:translate-y-0 cursor-pointer"
+            >
+              <div className="text-xl mb-1">🍂</div>
+              <div className="font-bold text-ink text-[11px] truncate">Late Blight</div>
+              <div className="text-[9px] text-amber-700 font-bold">Severe</div>
+            </button>
 
-          <button
-            onClick={() => onSelectSampleImage("healthy")}
-            className="p-3 bg-white border border-line rounded-2xl text-center text-xs hover:border-forest-2 hover:shadow-sm transition-all hover:-translate-y-0.5 active:translate-y-0 cursor-pointer"
-          >
-            <div className="text-xl mb-1">🌱</div>
-            <div className="font-bold text-ink text-[11px] truncate">Healthy</div>
-            <div className="text-[9px] text-leaf font-bold">96% Conf</div>
-          </button>
+            <button
+              onClick={() => onSelectSampleImage("healthy")}
+              className="p-3 bg-white border border-line rounded-2xl text-center text-xs hover:border-forest-2 hover:shadow-sm transition-all hover:-translate-y-0.5 active:translate-y-0 cursor-pointer"
+            >
+              <div className="text-xl mb-1">🌱</div>
+              <div className="font-bold text-ink text-[11px] truncate">Healthy</div>
+              <div className="text-[9px] text-leaf font-bold">96% Conf</div>
+            </button>
 
-          <button
-            onClick={() => onSelectSampleImage("blurry")}
-            className="p-3 bg-white border border-line rounded-2xl text-center text-xs hover:border-forest-2 hover:shadow-sm transition-all hover:-translate-y-0.5 active:translate-y-0 cursor-pointer"
-          >
-            <div className="text-xl mb-1">🌀</div>
-            <div className="font-bold text-ink text-[11px] truncate">Blurry Photo</div>
-            <div className="text-[9px] text-amber-700 font-bold">Quality Error</div>
-          </button>
+            <button
+              onClick={() => onSelectSampleImage("blurry")}
+              className="p-3 bg-white border border-line rounded-2xl text-center text-xs hover:border-forest-2 hover:shadow-sm transition-all hover:-translate-y-0.5 active:translate-y-0 cursor-pointer"
+            >
+              <div className="text-xl mb-1">🌀</div>
+              <div className="font-bold text-ink text-[11px] truncate">Blurry Photo</div>
+              <div className="text-[9px] text-amber-700 font-bold">Quality Error</div>
+            </button>
 
-          <button
-            onClick={() => onSelectSampleImage("dark")}
-            className="p-3 bg-white border border-line rounded-2xl text-center text-xs hover:border-forest-2 hover:shadow-sm transition-all hover:-translate-y-0.5 active:translate-y-0 cursor-pointer"
-          >
-            <div className="text-xl mb-1">🌑</div>
-            <div className="font-bold text-ink text-[11px] truncate">Too Dark</div>
-            <div className="text-[9px] text-amber-700 font-bold">Quality Error</div>
-          </button>
+            <button
+              onClick={() => onSelectSampleImage("dark")}
+              className="p-3 bg-white border border-line rounded-2xl text-center text-xs hover:border-forest-2 hover:shadow-sm transition-all hover:-translate-y-0.5 active:translate-y-0 cursor-pointer"
+            >
+              <div className="text-xl mb-1">🌑</div>
+              <div className="font-bold text-ink text-[11px] truncate">Too Dark</div>
+              <div className="text-[9px] text-amber-700 font-bold">Quality Error</div>
+            </button>
 
-          <button
-            onClick={() => onSelectSampleImage("lowconf")}
-            className="p-3 bg-white border border-line rounded-2xl text-center text-xs hover:border-forest-2 hover:shadow-sm transition-all hover:-translate-y-0.5 active:translate-y-0 cursor-pointer"
-          >
-            <div className="text-xl mb-1">❓</div>
-            <div className="font-bold text-ink text-[11px] truncate">Unclear Leaf</div>
-            <div className="text-[9px] text-amber-700 font-bold">Low Conf (42%)</div>
-          </button>
-        </div>
-      </motion.div>
+            <button
+              onClick={() => onSelectSampleImage("lowconf")}
+              className="p-3 bg-white border border-line rounded-2xl text-center text-xs hover:border-forest-2 hover:shadow-sm transition-all hover:-translate-y-0.5 active:translate-y-0 cursor-pointer"
+            >
+              <div className="text-xl mb-1">❓</div>
+              <div className="font-bold text-ink text-[11px] truncate">Unclear Leaf</div>
+              <div className="text-[9px] text-amber-700 font-bold">Low Conf (42%)</div>
+            </button>
+          </div>
+        </motion.div>
+      )}
 
       {/* 4. Weather & Outbreak Risk Widgets */}
       <motion.div variants={itemVariants} className="grid grid-cols-1 sm:grid-cols-2 gap-4">

@@ -14,8 +14,9 @@ export const DiagnosisPage: React.FC<DiagnosisPageProps> = ({ data, onScanAgain,
   const { t, speakText, isSpeaking } = useTranslation();
   const shouldReduceMotion = useReducedMotion();
 
-  const diseaseName = data.disease_name || "Early Blight (Alternaria solani)";
-  const confidence = Math.round((data.confidence || 0.94) * 100);
+  const isDemoSample = Boolean(data.is_demo_sample);
+  const diseaseName = data.disease_name || "Unidentified Condition";
+  const confidence = data.confidence !== undefined && data.confidence !== null ? Math.round(data.confidence * 100) : 0;
   const confLevel = data.confidence_level || (confidence >= 85 ? "HIGH" : confidence >= 60 ? "MEDIUM" : "LOW");
   const severity = data.severity || "Moderate";
   const weather = data.weather || {};
@@ -40,11 +41,19 @@ export const DiagnosisPage: React.FC<DiagnosisPageProps> = ({ data, onScanAgain,
       className="max-w-3xl mx-auto space-y-6 pb-16"
     >
       {/* 1. Header Bar */}
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex items-center justify-between gap-3 flex-wrap">
         <div className="space-y-1">
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-forest/10 text-forest text-xs font-bold uppercase tracking-wider">
-            <Sprout className="w-3.5 h-3.5" />
-            <span>Pathology Diagnostic Report • Tomato</span>
+          <div className="flex items-center gap-2 flex-wrap">
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-forest/10 text-forest text-xs font-bold uppercase tracking-wider">
+              <Sprout className="w-3.5 h-3.5" />
+              <span>Pathology Diagnostic Report</span>
+            </div>
+            {isDemoSample && (
+              <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-100 text-amber-900 border border-amber-300 text-xs font-bold uppercase tracking-wider">
+                <span className="w-2 h-2 rounded-full bg-amber-600 animate-pulse" />
+                <span>Demo sample</span>
+              </div>
+            )}
           </div>
           <h2 className="text-2xl sm:text-3xl font-black text-forest tracking-tight">Crop Health Analysis</h2>
         </div>
