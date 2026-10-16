@@ -26,3 +26,44 @@ export const supabase = isSupabaseConfigured
       },
     })
   : null;
+
+/**
+ * Verifies live connection to Supabase Auth & API services.
+ */
+export const verifySupabaseConnection = async (): Promise<{
+  success: boolean;
+  message: string;
+  details?: any;
+}> => {
+  if (!isSupabaseConfigured || !supabase) {
+    return {
+      success: false,
+      message: "Supabase client is not configured. Missing VITE_SUPABASE_URL or VITE_SUPABASE_ANON_KEY.",
+    };
+  }
+
+  try {
+    const { data, error } = await supabase.auth.getSession();
+    if (error) {
+      return {
+        success: false,
+        message: `Supabase auth connection check returned error: ${error.message}`,
+        details: error,
+      };
+    }
+    return {
+      success: true,
+      message: "Supabase connection verified successfully.",
+      details: {
+        url: supabaseUrl,
+        sessionActive: Boolean(data.session),
+      },
+    };
+  } catch (err: any) {
+    return {
+      success: false,
+      message: `Supabase connection failed: ${err?.message || String(err)}`,
+      details: err,
+    };
+  }
+};
