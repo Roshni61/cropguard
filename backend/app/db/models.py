@@ -75,6 +75,12 @@ class Scan(Base):
     quality_status = Column(String, default="GOOD") # GOOD, TOO_BLURRY, TOO_DARK, TOO_FAR, NO_LEAF_DETECTED
     quality_reasons = Column(JSON, default=list)
     
+    # Metadata & Context
+    crop = Column(String, default="Tomato")
+    district = Column(String, default="Coimbatore")
+    growth_stage = Column(String, default="Vegetative")
+    symptom_regions = Column(JSON, default=list)
+    
     # AI Diagnosis Results
     disease_name = Column(String, nullable=True)
     confidence = Column(Float, default=0.0) # 0.0 to 1.0
@@ -158,6 +164,8 @@ class ExpertCase(Base):
     ai_confidence = Column(Float, default=0.5)
     ai_severity = Column(String, default="Moderate")
     status = Column(String, default="PENDING") # PENDING, VERIFIED, CORRECTED, REJECTED
+    farmer_notes = Column(Text, nullable=True)
+    farmer_consent = Column(Boolean, default=True)
     expert_diagnosis = Column(String, nullable=True)
     expert_notes = Column(Text, nullable=True)
     expert_treatment = Column(Text, nullable=True)

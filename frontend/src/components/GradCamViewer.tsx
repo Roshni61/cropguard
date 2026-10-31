@@ -1,6 +1,16 @@
 import React, { useState } from "react";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
-import { ChevronDown, Eye, Layers, ShieldAlert, Sparkles, CheckCircle2, HelpCircle } from "lucide-react";
+import { ChevronDown, Eye, Layers, ShieldAlert, Sparkles, CheckCircle2, HelpCircle, Target } from "lucide-react";
+
+export interface SymptomRegion {
+  id: string;
+  x_percent: number;
+  y_percent: number;
+  width_percent: number;
+  height_percent: number;
+  label: string;
+  confidence?: number;
+}
 
 interface Props {
   originalImageUrl: string;
@@ -13,6 +23,7 @@ interface Props {
   contradicting?: string[];
   missing?: string[];
   explainabilityNote?: string;
+  symptomRegions?: SymptomRegion[];
 }
 
 export const GradCamViewer: React.FC<Props> = ({
@@ -26,9 +37,11 @@ export const GradCamViewer: React.FC<Props> = ({
   contradicting,
   missing,
   explainabilityNote,
+  symptomRegions = [],
 }) => {
   const canShowHeatmap = Boolean(hasRealGradCam && gradCamUrl);
   const [heat, setHeat] = useState(canShowHeatmap);
+  const [showBoxes, setShowBoxes] = useState<boolean>(true);
   const [open, setOpen] = useState<string | null>("symptoms");
   const shouldReduceMotion = useReducedMotion();
 
@@ -90,31 +103,49 @@ export const GradCamViewer: React.FC<Props> = ({
           <Layers className="h-5 w-5 text-lime" aria-hidden /> 
           <div>
             <h3 className="text-sm sm:text-base font-bold text-white">
-              {canShowHeatmap ? "Grad-CAM Model Attention Map" : "Direct Optical & Diagnostic Inspection"}
+              {canShowHeatmap ? "Grad-CAM Model Attention Map" : "Optical Leaf Analysis & Lesion Localization"}
             </h3>
             <p className="text-[11px] text-white/70">
-              {canShowHeatmap ? "Verifiable convolutional activation heatmap" : "Authentic leaf capture analysis"}
+              {canShowHeatmap 
+                ? "Verifiable convolutional activation heatmap" 
+                : symptomRegions.length > 0 
+                  ? `${symptomRegions.length} necrotic lesion region(s) localized`
+                  : "Authentic leaf capture analysis"}
             </p>
           </div>
         </div>
 
-        {canShowHeatmap ? (
-          <button 
-            onClick={() => setHeat(h => !h)} 
-            className="flex min-h-9 items-center gap-1.5 rounded-xl bg-lime text-forest hover:bg-lime/90 px-3.5 text-xs font-black shadow-xs transition cursor-pointer"
-          >
-            <Eye className="h-3.5 w-3.5" aria-hidden /> 
-            <span>{heat ? "Show Original Capture" : "Show Grad-CAM Heatmap"}</span>
-          </button>
-        ) : (
-          <div className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-white/10 border border-white/15 text-[11px] font-bold text-lime">
-            <CheckCircle2 className="w-3 h-3 text-lime" />
-            <span>Honest AI Explainability</span>
-          </div>
-        )}
+        <div className="flex items-center gap-2 flex-wrap">
+          {symptomRegions.length > 0 && !heat && (
+            <button
+              type="button"
+              onClick={() => setShowBoxes(b => !b)}
+              className="flex min-h-9 items-center gap-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-lime px-3 text-xs font-bold transition cursor-pointer border border-lime/30"
+            >
+              <Target className="h-3.5 w-3.5" aria-hidden />
+              <span>{showBoxes ? "Hide Lesion Boxes" : `Show Lesion Boxes (${symptomRegions.length})`}</span>
+            </button>
+          )}
+
+          {canShowHeatmap ? (
+            <button 
+              type="button"
+              onClick={() => setHeat(h => !h)} 
+              className="flex min-h-9 items-center gap-1.5 rounded-xl bg-lime text-forest hover:bg-lime/90 px-3.5 text-xs font-black shadow-xs transition cursor-pointer"
+            >
+              <Eye className="h-3.5 w-3.5" aria-hidden /> 
+              <span>{heat ? "Show Original Capture" : "Show Grad-CAM Heatmap"}</span>
+            </button>
+          ) : (
+            <div className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-white/10 border border-white/15 text-[11px] font-bold text-lime">
+              <CheckCircle2 className="w-3 h-3 text-lime" />
+              <span>Honest Explainability</span>
+            </div>
+          )}
+        </div>
       </div>
 
-      {/* Image Preview with Fallback */}
+      {/* Image Preview with Lesion Bounding Boxes & Fallback */}
       <div className="relative mx-4 sm:mx-5 my-4 aspect-video overflow-hidden rounded-2xl bg-black/40 farm-gradient-fallback border border-forest-2 grid-texture">
         <img 
           src={canShowHeatmap && heat && gradCamUrl ? gradCamUrl : originalImageUrl || "/images/farmer_crop_inspection.jpg"} 
@@ -127,9 +158,38 @@ export const GradCamViewer: React.FC<Props> = ({
             }
           }}
         />
+
+        {/* Real Symptom Bounding Boxes Overlay (OpenCV Colorimetric Lesions - Never Fake Heatmaps) */}
+        {!heat && showBoxes && symptomRegions.length > 0 && (
+          <div className="absolute inset-0 pointer-events-none">
+            {symptomRegions.map((region) => (
+              <div
+                key={region.id}
+                style={{
+                  left: `${region.x_percent}%`,
+                  top: `${region.y_percent}%`,
+                  width: `${region.width_percent}%`,
+                  height: `${region.height_percent}%`,
+                }}
+                className="absolute border-2 border-amber-400 bg-amber-400/20 rounded-md transition-all duration-200 shadow-sm"
+              >
+                <span className="absolute -top-5 left-0 px-1.5 py-0.5 rounded bg-amber-500 text-black text-[9px] font-black uppercase tracking-wider whitespace-nowrap shadow-xs">
+                  {region.label}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+
         <div className="absolute bottom-2.5 left-2.5 rounded-xl bg-forest/90 backdrop-blur-md px-3 py-1.5 text-[11px] text-lime font-bold border border-lime/30 shadow-sm flex items-center gap-1.5">
           <Sparkles className="w-3.5 h-3.5 text-lime" />
-          <span>{canShowHeatmap && heat ? "Active CNN Attention Layer Heatmap" : "Original Field Leaf Observation"}</span>
+          <span>
+            {canShowHeatmap && heat 
+              ? "Active CNN Attention Layer Heatmap" 
+              : symptomRegions.length > 0 && showBoxes
+                ? `Colorimetric Lesion Boundaries (${symptomRegions.length} detected)`
+                : "Original Field Leaf Observation"}
+          </span>
         </div>
       </div>
 
@@ -140,7 +200,7 @@ export const GradCamViewer: React.FC<Props> = ({
           <div>
             <strong className="text-lime font-bold">Strict AI Transparency:</strong>{" "}
             {explainabilityNote || 
-              "Grad-CAM visual attention overlays are only displayed when generated by a convolutional neural network with active gradient hooks. CropGuard never fabricates artificial heatmaps to guarantee verifiable scientific diagnosis."}
+              "Grad-CAM visual attention overlays are only displayed when generated by a convolutional neural network with active gradient hooks. Lesion regions above are extracted via optical colorimetric analysis. CropGuard never fabricates artificial heatmaps to guarantee verifiable scientific diagnosis."}
           </div>
         </div>
       )}
@@ -160,6 +220,7 @@ export const GradCamViewer: React.FC<Props> = ({
               className="rounded-2xl bg-white/5 border border-white/10 overflow-hidden transition-colors"
             >
               <button 
+                type="button"
                 onClick={() => setOpen(isOpen ? null : s.id)} 
                 aria-expanded={isOpen} 
                 className="flex min-h-12 w-full items-center justify-between px-4 text-left text-xs sm:text-sm font-bold text-white hover:text-lime transition cursor-pointer"

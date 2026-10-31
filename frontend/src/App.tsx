@@ -178,6 +178,7 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ user, onLogout, initialTa
               <ScannerPage
                 onDiagnosisComplete={handleDiagnosisComplete}
                 selectedSample={selectedSample}
+                initialDistrict={currentDistrict.name}
               />
             )}
 

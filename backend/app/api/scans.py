@@ -17,6 +17,8 @@ router = APIRouter(prefix="/scans", tags=["Scans & Diagnosis"])
 async def analyze_crop_image(
     file: UploadFile = File(...),
     crop: Optional[str] = Form("Tomato"),
+    district: Optional[str] = Form("Coimbatore"),
+    growth_stage: Optional[str] = Form("Vegetative"),
     field_id: Optional[str] = Form("fld-01"),
     leaf_part: str = Form("leaf"),
     client_scan_id: Optional[str] = Form(None),
@@ -29,8 +31,13 @@ async def analyze_crop_image(
     if not image_bytes:
         raise HTTPException(status_code=400, detail="Empty image file uploaded")
 
-    # 1. Run Vision Pipeline with Crop Hint
-    result = VisionModelService.diagnose_image(image_bytes, file.filename or "", crop_hint=crop)
+    # 1. Run Vision Pipeline with Crop Hint and District
+    result = VisionModelService.diagnose_image(
+        image_bytes,
+        file.filename or "",
+        crop_hint=crop,
+        district=district
+    )
     quality = result["quality"]
 
     # If quality check rejected the image (TOO_BLURRY, TOO_DARK, OVEREXPOSED, NO_LEAF_DETECTED, TOO_FAR)
@@ -113,15 +120,20 @@ async def analyze_crop_image(
     image_url = f"data:image/jpeg;base64,{b64_img[:50000]}..."
 
     # 5. Persist Scan History to Database
+    symptom_regions = diagnosis.get("symptom_regions", [])
     scan = Scan(
         client_scan_id=client_scan_id,
         field_id=field_id,
         image_url=image_url,
         leaf_part=leaf_part,
+        crop=resolved_crop,
+        district=district or "Coimbatore",
+        growth_stage=growth_stage or "Vegetative",
+        symptom_regions=symptom_regions,
         location_lat=lat,
         location_lng=lng,
         quality_status=quality["status"],
-        quality_reasons=quality["reasons"],
+        quality_reasons=quality.get("reasons", []),
         disease_name=disease_name,
         confidence=conf,
         confidence_level=diagnosis["confidence_level"],
@@ -136,28 +148,22 @@ async def analyze_crop_image(
     )
     db.add(scan)
 
-    # 6. Auto-escalate if low confidence or severe
-    if is_low_conf or severity == "Severe":
-        expert_case = ExpertCase(
-            scan_id=scan.id,
-            farmer_name=current_user.name,
-            field_name=field.name if field else f"{resolved_crop} Field",
-            crop=resolved_crop,
-            ai_disease=disease_name,
-            ai_confidence=conf,
-            ai_severity=severity,
-            status="PENDING"
-        )
-        db.add(expert_case)
-
     await db.commit()
     await db.refresh(scan)
+
+    expert_review_needed = diagnosis.get("expert_review_needed", is_low_conf or severity == "Severe")
+    expert_review_reason = diagnosis.get(
+        "expert_review_reason",
+        "Expert verification recommended based on severity or uncertainty thresholds."
+    )
 
     return {
         "success": True,
         "data": {
             "id": scan.id,
             "crop": resolved_crop,
+            "district": district or "Coimbatore",
+            "growth_stage": growth_stage or "Vegetative",
             "quality": quality,
             "disease_name": disease_name,
             "confidence": conf,
@@ -169,12 +175,18 @@ async def analyze_crop_image(
             "causes": diagnosis.get("causes", ""),
             "preventive_measures": diagnosis.get("preventive_measures", ""),
             "alternatives": diagnosis["alternatives"],
+            "symptom_regions": symptom_regions,
+            "expert_review_needed": expert_review_needed,
+            "expert_review_reason": expert_review_reason,
+            "confidence_disclaimer": diagnosis.get(
+                "confidence_disclaimer",
+                "AI confidence indicates pattern correlation with verified agricultural pathology datasets. It is not an absolute guarantee of laboratory accuracy. Always verify symptoms with physical field scouting."
+            ),
             "grad_cam_url": diagnosis.get("grad_cam_url"),
             "has_real_grad_cam": diagnosis.get("has_real_grad_cam", False),
             "explainability_note": diagnosis.get("explainability_note", ""),
             "weather": weather,
             "treatments": treatment_recs,
-            "auto_escalated_to_expert": is_low_conf or severity == "Severe",
             "can_ask_followup": True
         }
     }
@@ -201,11 +213,17 @@ async def get_user_scan_history(
     for s in scans:
         history.append({
             "id": s.id,
+            "crop": s.crop or "Tomato",
+            "district": s.district or "Coimbatore",
+            "growth_stage": s.growth_stage or "Vegetative",
             "disease_name": s.disease_name,
             "confidence": s.confidence,
             "confidence_level": s.confidence_level,
             "severity": s.severity,
             "quality_status": s.quality_status,
+            "image_url": s.image_url,
+            "symptom_regions": s.symptom_regions or [],
+            "alternatives": s.alternatives or [],
             "created_at": s.created_at.strftime("%Y-%m-%d %H:%M") if s.created_at else "",
             "spray_window_advice": s.spray_window_advice,
             "treatments": s.treatment_recommendations
@@ -218,10 +236,7 @@ async def get_scan_by_id(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
-    """
-    WORKED EXAMPLE REQUIREMENT:
-    GET /scans/{id} with User B's token on User A's scan returns 404 and leaks no data.
-    """
+    """Returns full scan diagnostic report with authorization check."""
     stmt = (
         select(Scan)
         .join(Field, Scan.field_id == Field.id)
@@ -231,7 +246,6 @@ async def get_scan_by_id(
     result = await db.execute(stmt)
     scan = result.scalars().first()
 
-    # If scan does not exist, return 404
     if not scan:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -243,7 +257,6 @@ async def get_scan_by_id(
     farm_res = await db.execute(farm_stmt)
     farm = farm_res.scalars().first()
 
-    # Reject if owned by another user and current_user is not an authorized officer/expert
     if not farm or (farm.user_id != current_user.id and current_user.role not in ["EXPERT", "FIELD_OFFICER", "OFFICER", "SYS_ADMIN"]):
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -254,11 +267,18 @@ async def get_scan_by_id(
         "success": True,
         "data": {
             "id": scan.id,
+            "crop": scan.crop or "Tomato",
+            "district": scan.district or "Coimbatore",
+            "growth_stage": scan.growth_stage or "Vegetative",
             "disease_name": scan.disease_name,
             "confidence": scan.confidence,
             "confidence_level": scan.confidence_level,
             "severity": scan.severity,
             "quality_status": scan.quality_status,
+            "quality_reasons": scan.quality_reasons or [],
+            "image_url": scan.image_url,
+            "symptom_regions": scan.symptom_regions or [],
+            "alternatives": scan.alternatives or [],
             "created_at": scan.created_at.strftime("%Y-%m-%d %H:%M") if scan.created_at else "",
             "spray_window_advice": scan.spray_window_advice,
             "treatments": scan.treatment_recommendations,

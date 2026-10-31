@@ -356,6 +356,14 @@ export const analyzeCropImageAPI = async (formData: FormData, isOfflineMode = fa
     disease_name = filename.toLowerCase().includes("healthy") ? "Healthy Potato" : "Potato Late Blight (Phytophthora infestans)";
     org_title = "Copper Hydroxide 77% WP";
     chem_name = "Dimethomorph 50% WP";
+  } else if (crop === "Cotton") {
+    disease_name = filename.toLowerCase().includes("healthy") ? "Healthy Cotton" : "Bacterial Blight / Angular Leaf Spot (Xanthomonas citri pv. malvacearum)";
+    org_title = "Pseudomonas fluorescens Bio-Bactericide";
+    chem_name = "Copper Oxychloride 50% WP + Streptocycline";
+  } else if (crop === "Banana") {
+    disease_name = filename.toLowerCase().includes("healthy") ? "Healthy Banana" : "Sigatoka Leaf Spot (Pseudocercospora musicola)";
+    org_title = "Horticultural Mineral Oil (10ml/L)";
+    chem_name = "Propiconazole 25% EC (1ml/L)";
   } else {
     disease_name = filename.toLowerCase().includes("late") ? "Late Blight (Phytophthora infestans)" :
                    filename.toLowerCase().includes("healthy") ? "Healthy Tomato" : "Early Blight (Alternaria solani)";
@@ -633,6 +641,33 @@ export const reviewExpertCaseAPI = async (data: {
     throw new Error(json.detail || "Failed to submit expert review.");
   }
   return json;
+};
+
+export const escalateScanToExpertAPI = async (data: {
+  scan_id: string;
+  farmer_consent: boolean;
+  farmer_notes?: string;
+}) => {
+  const res = await fetch(`${API_BASE}/experts/escalate`, {
+    method: "POST",
+    headers: getAuthHeaders(),
+    body: JSON.stringify(data),
+  });
+  const json = await res.json();
+  if (!res.ok) {
+    throw new Error(json.detail || "Unable to submit case for expert review.");
+  }
+  return json;
+};
+
+export const fetchScanByIdAPI = async (scanId: string) => {
+  const res = await fetch(`${API_BASE}/scans/${scanId}`, {
+    headers: getAuthHeaders(),
+  });
+  if (!res.ok) {
+    throw new Error("Scan record not found or inaccessible.");
+  }
+  return await res.json();
 };
 
 export interface FieldItem {

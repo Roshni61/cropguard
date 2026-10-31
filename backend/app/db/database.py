@@ -16,10 +16,11 @@ SyncSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=sync_eng
 Base = declarative_base()
 
 def ensure_schema_migrations():
-    """Ensure supabase_user_id column exists and phone is nullable without data loss."""
+    """Ensure supabase_user_id column exists, phone is nullable, and new phase columns exist."""
     try:
-        db_file = settings.SYNC_DATABASE_URL.replace("sqlite:///", "").replace("sqlite+aiosqlite:///", "")
-        if db_file and not db_file.startswith(":memory:") and os.path.exists(db_file):
+        raw_db = settings.SYNC_DATABASE_URL.replace("sqlite:///", "").replace("sqlite+aiosqlite:///", "")
+        targets = set(filter(os.path.exists, [raw_db, os.path.join("backend", raw_db), "cropguard.db", "backend/cropguard.db"]))
+        for db_file in targets:
             conn = sqlite3.connect(db_file)
             cur = conn.cursor()
             cur.execute("PRAGMA table_info(users)")
@@ -55,8 +56,34 @@ def ensure_schema_migrations():
                     cur.execute("CREATE UNIQUE INDEX IF NOT EXISTS ix_users_supabase_user_id ON users (supabase_user_id)")
                     cur.execute("PRAGMA foreign_keys=ON")
                     conn.commit()
+
+            # Ensure scans table has crop, district, growth_stage, symptom_regions
+            cur.execute("PRAGMA table_info(scans)")
+            scan_cols = {r[1]: r for r in cur.fetchall()}
+            if scan_cols:
+                if "crop" not in scan_cols:
+                    cur.execute("ALTER TABLE scans ADD COLUMN crop VARCHAR DEFAULT 'Tomato'")
+                if "district" not in scan_cols:
+                    cur.execute("ALTER TABLE scans ADD COLUMN district VARCHAR DEFAULT 'Coimbatore'")
+                if "growth_stage" not in scan_cols:
+                    cur.execute("ALTER TABLE scans ADD COLUMN growth_stage VARCHAR DEFAULT 'Vegetative'")
+                if "symptom_regions" not in scan_cols:
+                    cur.execute("ALTER TABLE scans ADD COLUMN symptom_regions JSON DEFAULT '[]'")
+                conn.commit()
+
+            # Ensure expert_cases table has farmer_notes, farmer_consent
+            cur.execute("PRAGMA table_info(expert_cases)")
+            exp_cols = {r[1]: r for r in cur.fetchall()}
+            if exp_cols:
+                if "farmer_notes" not in exp_cols:
+                    cur.execute("ALTER TABLE expert_cases ADD COLUMN farmer_notes TEXT")
+                if "farmer_consent" not in exp_cols:
+                    cur.execute("ALTER TABLE expert_cases ADD COLUMN farmer_consent BOOLEAN DEFAULT 1")
+                conn.commit()
+
             conn.close()
     except Exception as e:
+        print(f"[MIGRATION] Migration check notice: {e}")
         print(f"[MIGRATION] Migration check notice: {e}")
 
 ensure_schema_migrations()
