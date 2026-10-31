@@ -5,7 +5,7 @@ import {
   CheckCircle2, Sprout, KeyRound, Mail, Phone, Lock,
   Sparkles, Stethoscope, Landmark, X, ArrowRight
 } from "lucide-react";
-import { loginAPI, registerAPI, requestPasswordResetAPI, syncSupabaseSessionWithBackend } from "../services/api";
+import { loginAPI, registerAPI, requestPasswordResetAPI, syncSupabaseSessionWithBackend, fetchDemoConfigAPI } from "../services/api";
 import { supabase, isSupabaseConfigured, getRedirectUrl } from "../services/supabase";
 
 interface AuthPageProps {
@@ -70,7 +70,17 @@ export const AuthPage: React.FC<AuthPageProps> = ({
   // Demo Login State
   const [showDemoModal, setShowDemoModal] = useState(false);
   const [demoSubmittingRole, setDemoSubmittingRole] = useState<string | null>(null);
-  const isDemoEnabled = import.meta.env.VITE_DEMO_LOGIN_ENABLED !== "false";
+  const [backendDemoEnabled, setBackendDemoEnabled] = useState<boolean | null>(null);
+  const isDemoEnabled = (import.meta.env.VITE_DEMO_LOGIN_ENABLED !== "false") && (backendDemoEnabled !== false);
+
+  // Sync demo availability from backend API
+  useEffect(() => {
+    fetchDemoConfigAPI().then((config) => {
+      if (config && typeof config.demo_enabled === "boolean") {
+        setBackendDemoEnabled(config.demo_enabled);
+      }
+    });
+  }, []);
 
   // Escape key listener for demo modal
   useEffect(() => {

@@ -8,10 +8,10 @@
 
 ### 📌 Live Deployment & Production Links
 
-- 🌐 **Live Website**: [https://cropguard.vercel.app](https://cropguard.vercel.app)
+- 🌐 **Live Website**: [https://cropguard-ochre.vercel.app](https://cropguard-ochre.vercel.app)
 - 💻 **GitHub Repository**: [https://github.com/Roshni61/cropguard](https://github.com/Roshni61/cropguard)
-- ⚙️ **Backend API**: [https://cropguard-backend.onrender.com/api/v1](https://cropguard-backend.onrender.com/api/v1) *(or local `http://localhost:8000/api/v1`)*
-- 📖 **API Documentation**: [https://cropguard-backend.onrender.com/docs](https://cropguard-backend.onrender.com/docs) *(or local `http://localhost:8000/docs`)*
+- ⚙️ **Backend API**: [https://cropguard-c7tl.onrender.com/api/v1](https://cropguard-c7tl.onrender.com/api/v1) *(or local `http://localhost:8000/api/v1`)*
+- 📖 **API Documentation**: [https://cropguard-c7tl.onrender.com/docs](https://cropguard-c7tl.onrender.com/docs) *(or local `http://localhost:8000/docs`)*
 
 ---
 

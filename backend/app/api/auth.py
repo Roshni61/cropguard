@@ -150,12 +150,13 @@ async def login(user_in: UserLogin, db: AsyncSession = Depends(get_db)):
         result = await db.execute(select(User).filter(User.email == email_clean))
         user = result.scalars().first()
 
-        # If demo user not yet provisioned in current DB instance, initialize safely
-        if not user and is_demo_email and settings.DEMO_LOGIN_ENABLED:
-            from app.db.seed import init_demo_accounts
-            init_demo_accounts()
-            result = await db.execute(select(User).filter(User.email == email_clean))
-            user = result.scalars().first()
+        # If demo user not yet provisioned in current DB instance or credentials need sync, initialize safely
+        if is_demo_email and settings.DEMO_LOGIN_ENABLED:
+            if not user or not user.password_hash or not verify_password(user_in.password, user.password_hash):
+                from app.db.seed import init_demo_accounts
+                init_demo_accounts()
+                result = await db.execute(select(User).filter(User.email == email_clean))
+                user = result.scalars().first()
     elif user_in.phone:
         result = await db.execute(select(User).filter(User.phone == user_in.phone.strip()))
         user = result.scalars().first()

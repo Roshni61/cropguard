@@ -7,7 +7,7 @@ const getApiBase = (): string => {
   }
   // If running on a deployed domain (like Vercel), avoid pointing to user's localhost
   if (typeof window !== "undefined" && !window.location.hostname.includes("localhost") && !window.location.hostname.includes("127.0.0.1")) {
-    return envUrl && !envUrl.includes("localhost") ? envUrl : "https://cropguard-backend.onrender.com/api/v1";
+    return envUrl && !envUrl.includes("localhost") ? envUrl : "https://cropguard-c7tl.onrender.com/api/v1";
   }
   return envUrl || "http://127.0.0.1:8000/api/v1";
 };
