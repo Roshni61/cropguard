@@ -48,7 +48,7 @@ async def get_user_farms(
     Ensure user_id belongs strictly to the authenticated user.
     Reject cross-user requests with 404 to avoid leaking existence of records.
     """
-    if user_id != current_user.id and current_user.role not in ["SYS_ADMIN", "DISTRICT_ADMIN", "FIELD_OFFICER"]:
+    if user_id != current_user.id and current_user.role not in ["SYS_ADMIN", "DISTRICT_ADMIN", "FIELD_OFFICER", "OFFICER"]:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Farm records not found."
@@ -64,7 +64,7 @@ async def get_farm_by_id(
     """Retrieve single farm if and only if owned by the authenticated user."""
     result = await db.execute(select(Farm).filter(Farm.id == farm_id))
     farm = result.scalars().first()
-    if not farm or (farm.user_id != current_user.id and current_user.role not in ["SYS_ADMIN", "DISTRICT_ADMIN", "FIELD_OFFICER"]):
+    if not farm or (farm.user_id != current_user.id and current_user.role not in ["SYS_ADMIN", "DISTRICT_ADMIN", "FIELD_OFFICER", "OFFICER"]):
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Farm not found."

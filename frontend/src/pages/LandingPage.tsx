@@ -6,6 +6,7 @@ import {
   Sparkles, BarChart3, Globe, Layers, ArrowUpRight
 } from "lucide-react";
 import { useTranslation } from "../i18n/I18nContext";
+import { ImageWithFallback } from "../components/ImageWithFallback";
 
 interface LandingPageProps {
   onLoginClick: () => void;
@@ -226,16 +227,15 @@ export const LandingPage: React.FC<LandingPageProps> = ({
 
               {/* Photo with Graceful Fallback */}
               <div className="relative aspect-video rounded-2xl overflow-hidden bg-forest-2 farm-gradient-fallback border border-lime/30 group">
-                <img
-                  src="/images/farmer_crop_inspection.jpg"
-                  alt="Farmer inspecting crop leaf"
+                <ImageWithFallback
+                  imageKey="farmer_inspecting_field"
+                  alt="Farmer inspecting crop leaf in field"
+                  aspectRatioClass="aspect-video"
+                  language={language}
+                  showCredit={true}
                   className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                  onError={(e) => {
-                    // Graceful fallback to gradient background if local image is unavailable
-                    (e.target as HTMLElement).style.display = "none";
-                  }}
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-forest/95 via-forest/30 to-transparent flex items-end p-4">
+                <div className="absolute inset-0 bg-gradient-to-t from-forest/95 via-forest/30 to-transparent flex items-end p-4 pointer-events-none">
                   <div className="text-left space-y-1">
                     <span className="text-xs font-extrabold text-lime bg-forest/90 px-2.5 py-1 rounded-lg border border-lime/30 shadow-sm inline-block">
                       Early Blight Identified (94%)
@@ -446,6 +446,140 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               <span>Create Your Account</span>
               <ChevronRight className="w-5 h-5" />
             </button>
+          </div>
+        </div>
+      </section>
+
+      {/* 5.5 AGRICULTURAL VISUAL GALLERY */}
+      <section id="gallery" className="py-20 bg-white border-y border-line">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 space-y-10">
+          <div className="text-center space-y-3 max-w-2xl mx-auto">
+            <span className="text-xs font-extrabold text-forest uppercase tracking-widest bg-lime/40 px-3.5 py-1 rounded-full inline-block">
+              Visual Agronomy Library
+            </span>
+            <h2 className="text-3xl sm:text-4xl font-black text-forest">
+              Real Agricultural Photography & Field Pathology
+            </h2>
+            <p className="text-sm sm:text-base text-ink-2">
+              High-resolution photographic documentation of growers, healthy crops, authentic disease manifestations, extension experts, and regulated markets.
+            </p>
+          </div>
+
+          {/* Photographic Grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {/* 1. Indian Farmer */}
+            <div className="bg-paper rounded-3xl p-4 border border-line shadow-sm space-y-3">
+              <ImageWithFallback
+                imageKey="farmer_in_paddy"
+                aspectRatioClass="aspect-video"
+                language={language}
+                showCaption={false}
+                showCredit={true}
+                className="rounded-2xl"
+              />
+              <div className="space-y-1">
+                <span className="text-[10px] font-bold text-forest uppercase tracking-wider bg-white px-2 py-0.5 rounded border border-line">
+                  Field Scouting
+                </span>
+                <h4 className="font-black text-sm text-forest">Grower Inspecting Cauvery Paddy</h4>
+                <p className="text-xs text-ink-2">Scouting water levels and checking leaf sheath cleanliness during tillering phase.</p>
+              </div>
+            </div>
+
+            {/* 2. Healthy Tomato */}
+            <div className="bg-paper rounded-3xl p-4 border border-line shadow-sm space-y-3">
+              <ImageWithFallback
+                imageKey="healthy_tomato"
+                aspectRatioClass="aspect-video"
+                language={language}
+                showCaption={false}
+                showCredit={true}
+                className="rounded-2xl"
+              />
+              <div className="space-y-1">
+                <span className="text-[10px] font-bold text-emerald-800 uppercase tracking-wider bg-white px-2 py-0.5 rounded border border-line">
+                  Healthy Foliage
+                </span>
+                <h4 className="font-black text-sm text-forest">Healthy Tomato (Solanum lycopersicum)</h4>
+                <p className="text-xs text-ink-2">Vigorous canopy with dark green foliage, uniform fruit clusters, and zero necrotic lesions.</p>
+              </div>
+            </div>
+
+            {/* 3. Tomato Early Blight (Genuine pathology) */}
+            <div className="bg-paper rounded-3xl p-4 border border-line shadow-sm space-y-3">
+              <ImageWithFallback
+                imageKey="tomato_early_blight"
+                aspectRatioClass="aspect-video"
+                language={language}
+                showCaption={false}
+                showCredit={true}
+                className="rounded-2xl"
+              />
+              <div className="space-y-1">
+                <span className="text-[10px] font-bold text-amber-900 uppercase tracking-wider bg-white px-2 py-0.5 rounded border border-line">
+                  Pathology Reference
+                </span>
+                <h4 className="font-black text-sm text-forest">Early Blight (Alternaria solani)</h4>
+                <p className="text-xs text-ink-2">Hallmark concentric 'target board' rings on lower foliage with characteristic yellow chlorosis.</p>
+              </div>
+            </div>
+
+            {/* 4. Healthy vs Diseased Comparison */}
+            <div className="bg-paper rounded-3xl p-4 border border-line shadow-sm space-y-3">
+              <ImageWithFallback
+                imageKey="healthy_vs_diseased_leaves"
+                aspectRatioClass="aspect-video"
+                language={language}
+                showCaption={false}
+                showCredit={true}
+                className="rounded-2xl"
+              />
+              <div className="space-y-1">
+                <span className="text-[10px] font-bold text-forest uppercase tracking-wider bg-white px-2 py-0.5 rounded border border-line">
+                  Diagnostic Comparison
+                </span>
+                <h4 className="font-black text-sm text-forest">Healthy vs Necrotic Foliage</h4>
+                <p className="text-xs text-ink-2">Comparative visual showing intact chloroplast surface versus cellular necrosis from fungal infestation.</p>
+              </div>
+            </div>
+
+            {/* 5. Agricultural Expert */}
+            <div className="bg-paper rounded-3xl p-4 border border-line shadow-sm space-y-3">
+              <ImageWithFallback
+                imageKey="expert_field_inspection"
+                aspectRatioClass="aspect-video"
+                language={language}
+                showCaption={false}
+                showCredit={true}
+                className="rounded-2xl"
+              />
+              <div className="space-y-1">
+                <span className="text-[10px] font-bold text-blue-900 uppercase tracking-wider bg-white px-2 py-0.5 rounded border border-line">
+                  Expert Pathology
+                </span>
+                <h4 className="font-black text-sm text-forest">TNAU Pathologist Clinical Review</h4>
+                <p className="text-xs text-ink-2">Agricultural extension specialist verifying leaf symptom morphology before prescribing chemical doses.</p>
+              </div>
+            </div>
+
+            {/* 6. Regulated Market */}
+            <div className="bg-paper rounded-3xl p-4 border border-line shadow-sm space-y-3">
+              <ImageWithFallback
+                imageKey="local_mandi_market"
+                aspectRatioClass="aspect-video"
+                language={language}
+                showCaption={false}
+                showCredit={true}
+                className="rounded-2xl"
+              />
+              <div className="space-y-1">
+                <span className="text-[10px] font-bold text-orange-900 uppercase tracking-wider bg-white px-2 py-0.5 rounded border border-line">
+                  Agricultural Mandi
+                </span>
+                <h4 className="font-black text-sm text-forest">Tamil Nadu Regulated Market</h4>
+                <p className="text-xs text-ink-2">Crates of harvest-ready produce brought to regulated APMC mandis for fair-price transparent trading.</p>
+              </div>
+            </div>
           </div>
         </div>
       </section>

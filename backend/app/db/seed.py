@@ -6,12 +6,183 @@ from app.db.models import (
 )
 from app.security.pwd import hash_password
 
+def init_demo_accounts(db=None):
+    """Safely initialize or update the 3 demo accounts without duplicating or affecting existing data."""
+    from app.config import settings
+    if not settings.DEMO_LOGIN_ENABLED:
+        return
+
+    Base.metadata.create_all(bind=sync_engine)
+    should_close = False
+    if db is None:
+        db = SyncSessionLocal()
+        should_close = True
+
+    try:
+        # 1. Farmer Demo Account (farmer@cropguard.demo / Farmer@123)
+        farmer_email = "farmer@cropguard.demo"
+        farmer_user = db.query(User).filter_by(email=farmer_email).first()
+        if not farmer_user:
+            farmer_user = User(
+                id="usr-demo-farmer",
+                name="Ramesh Kumar (Demo Farmer)",
+                email=farmer_email,
+                role="FARMER",
+                preferred_language="en",
+                state="Tamil Nadu",
+                district="Coimbatore",
+                measurement_unit="acre",
+                password_hash=hash_password("Farmer@123")
+            )
+            db.add(farmer_user)
+            db.commit()
+            db.refresh(farmer_user)
+        else:
+            farmer_user.password_hash = hash_password("Farmer@123")
+            farmer_user.role = "FARMER"
+            db.commit()
+
+        # Ensure demo farmer has Farm and Field for dashboard experience
+        demo_farm = db.query(Farm).filter_by(user_id=farmer_user.id).first()
+        if not demo_farm:
+            demo_farm = Farm(
+                id="frm-demo-01",
+                user_id=farmer_user.id,
+                name="Green Valley Demo Farm",
+                location_lat=11.0168,
+                location_lng=76.9558,
+                address="Pollachi Road, Coimbatore",
+                total_area=4.5
+            )
+            db.add(demo_farm)
+            db.commit()
+
+            demo_field1 = Field(
+                id="fld-demo-01",
+                farm_id="frm-demo-01",
+                name="Tomato Field A (North)",
+                area=2.4,
+                crop="Tomato",
+                variety="Arka Rakshak",
+                sowing_date="2026-08-15",
+                expected_harvest_date="2026-11-20",
+                crop_stage="Fruiting",
+                soil_type="Red Loam",
+                irrigation_type="Drip Irrigation",
+                health_score=82
+            )
+            demo_field2 = Field(
+                id="fld-demo-02",
+                farm_id="frm-demo-01",
+                name="Tomato Field B (South)",
+                area=2.1,
+                crop="Tomato",
+                variety="Pusa Ruby",
+                sowing_date="2026-09-01",
+                expected_harvest_date="2026-12-05",
+                crop_stage="Vegetative",
+                soil_type="Black Cotton",
+                irrigation_type="Drip Irrigation",
+                health_score=94
+            )
+            db.add_all([demo_field1, demo_field2])
+            db.commit()
+
+        # 2. Agricultural Expert Demo Account (expert@cropguard.demo / Expert@123)
+        expert_email = "expert@cropguard.demo"
+        expert_user = db.query(User).filter_by(email=expert_email).first()
+        if not expert_user:
+            expert_user = User(
+                id="usr-demo-expert",
+                name="Dr. S. Lakshmi (Demo Expert)",
+                email=expert_email,
+                role="EXPERT",
+                preferred_language="en",
+                state="Tamil Nadu",
+                district="Coimbatore",
+                password_hash=hash_password("Expert@123")
+            )
+            db.add(expert_user)
+            db.commit()
+            db.refresh(expert_user)
+        else:
+            expert_user.password_hash = hash_password("Expert@123")
+            expert_user.role = "EXPERT"
+            db.commit()
+
+        # 3. District Officer Demo Account (officer@cropguard.demo / Officer@123)
+        officer_email = "officer@cropguard.demo"
+        officer_user = db.query(User).filter_by(email=officer_email).first()
+        if not officer_user:
+            officer_user = User(
+                id="usr-demo-officer",
+                name="Officer V. Arumugam (Demo Officer)",
+                email=officer_email,
+                role="OFFICER",
+                preferred_language="en",
+                state="Tamil Nadu",
+                district="Coimbatore",
+                password_hash=hash_password("Officer@123")
+            )
+            db.add(officer_user)
+            db.commit()
+            db.refresh(officer_user)
+        else:
+            officer_user.password_hash = hash_password("Officer@123")
+            officer_user.role = "OFFICER"
+            db.commit()
+
+        # Ensure demo expert has at least one pending case in queue
+        demo_case = db.query(ExpertCase).first()
+        if not demo_case:
+            # Check or create a sample scan
+            demo_scan = db.query(Scan).first()
+            if not demo_scan:
+                field_for_scan = db.query(Field).first()
+                demo_scan = Scan(
+                    id="scn-demo-01",
+                    field_id=field_for_scan.id if field_for_scan else "fld-demo-01",
+                    image_url="/samples/sample_early_blight.jpg",
+                    disease_name="Early Blight",
+                    confidence=0.76,
+                    confidence_level="MEDIUM",
+                    severity="Moderate",
+                    quality_status="PASSED"
+                )
+                db.add(demo_scan)
+                db.commit()
+
+            new_case = ExpertCase(
+                id="exp-case-demo-01",
+                scan_id=demo_scan.id,
+                farmer_name="Ramesh Kumar (Demo Farmer)",
+                farmer_phone="9876543210",
+                field_name="Tomato Field A (North)",
+                crop="Tomato",
+                ai_disease="Early Blight",
+                ai_confidence=0.76,
+                ai_severity="Moderate",
+                status="PENDING",
+                expert_notes=""
+            )
+            db.add(new_case)
+            db.commit()
+
+        print("[DEMO_INIT] Demo accounts verified & initialized successfully.")
+    except Exception as e:
+        print(f"[DEMO_INIT] Notice during initialization: {e}")
+        db.rollback()
+    finally:
+        if should_close:
+            db.close()
+
 def seed_database():
     Base.metadata.create_all(bind=sync_engine)
     db = SyncSessionLocal()
 
     # Check if already seeded
     if db.query(User).filter_by(phone="9876543210").first():
+        init_demo_accounts(db)
         db.close()
         return
 
@@ -211,6 +382,8 @@ def seed_database():
         application_link="https://tnhorticulture.tn.gov.in"
     )
     db.add_all([gs1, gs2])
+
+    init_demo_accounts(db)
 
     db.commit()
     db.close()

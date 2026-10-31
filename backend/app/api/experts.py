@@ -31,6 +31,8 @@ async def get_pending_cases(db: AsyncSession = Depends(get_db)):
             "scan_id": c.scan_id,
             "farmer_name": c.farmer_name,
             "field_name": c.field_name,
+            "location": "Pollachi, Coimbatore, Tamil Nadu",
+            "image_url": scan.image_url if (scan and scan.image_url) else "https://images.unsplash.com/photo-1591857177580-dc82b9ac4e1e?auto=format&fit=crop&w=800&q=80",
             "crop": c.crop,
             "ai_disease": c.ai_disease,
             "ai_confidence": c.ai_confidence,

@@ -16,6 +16,7 @@ router = APIRouter(prefix="/scans", tags=["Scans & Diagnosis"])
 @router.post("/analyze")
 async def analyze_crop_image(
     file: UploadFile = File(...),
+    crop: Optional[str] = Form("Tomato"),
     field_id: Optional[str] = Form("fld-01"),
     leaf_part: str = Form("leaf"),
     client_scan_id: Optional[str] = Form(None),
@@ -28,25 +29,28 @@ async def analyze_crop_image(
     if not image_bytes:
         raise HTTPException(status_code=400, detail="Empty image file uploaded")
 
-    # 1. Run Vision Pipeline
-    result = VisionModelService.diagnose_image(image_bytes, file.filename or "")
+    # 1. Run Vision Pipeline with Crop Hint
+    result = VisionModelService.diagnose_image(image_bytes, file.filename or "", crop_hint=crop)
     quality = result["quality"]
 
-    # If quality is below threshold (TOO_BLURRY, TOO_DARK, NO_LEAF_DETECTED)
+    # If quality check rejected the image (TOO_BLURRY, TOO_DARK, OVEREXPOSED, NO_LEAF_DETECTED, TOO_FAR)
     if quality["status"] != "GOOD":
         return {
             "success": False,
             "quality": quality,
             "error": {
                 "code": f"IMAGE_{quality['status']}",
-                "message": quality["reasons"][0] if quality["reasons"] else "Image quality is insufficient for accurate AI diagnosis."
+                "message": quality["reasons"][0] if quality["reasons"] else "Image quality is insufficient for accurate AI diagnosis.",
+                "guidance": quality.get("guidance", "Please position the affected leaf under natural daylight and hold steady.")
             }
         }
 
     diagnosis = result["diagnosis"]
+    resolved_crop = diagnosis.get("crop", crop or "Tomato")
     disease_name = diagnosis["disease_name"]
     severity = diagnosis["severity"]
     conf = diagnosis["confidence"]
+    is_low_conf = diagnosis.get("is_low_confidence", False)
 
     # 2. Fetch live weather & spray advisory
     weather = await WeatherService.get_weather(lat or 11.0168, lng or 76.9558)
@@ -83,10 +87,10 @@ async def analyze_crop_image(
         if not field:
             field = Field(
                 farm_id=user_farm.id,
-                name="Tomato Field A (North)",
-                crop="Tomato",
+                name=f"{resolved_crop} Field A",
+                crop=resolved_crop,
                 area=2.4,
-                variety="Arka Rakshak"
+                variety="Hybrid"
             )
             db.add(field)
             await db.commit()
@@ -94,56 +98,21 @@ async def analyze_crop_image(
 
     field_id = field.id
     field_area = field.area if field else 1.0
-    crop_name = field.crop if field else "Tomato"
 
-    # Match exact disease in KB
-    kb_res = await db.execute(select(TreatmentKnowledge).filter(TreatmentKnowledge.crop == crop_name))
-    kb_entries = kb_res.scalars().all()
-    kb_match = None
-    for entry in kb_entries:
-        if entry.disease.lower() in disease_name.lower() or disease_name.lower() in entry.disease.lower():
-            kb_match = {
-                "organic_treatment": entry.organic_treatment,
-                "chemical_treatment": entry.chemical_treatment,
-                "active_ingredients": entry.active_ingredients,
-                "dosage": entry.dosage,
-                "application_timing": entry.application_timing,
-                "safety_precautions": entry.safety_precautions,
-                "pre_harvest_interval_days": entry.pre_harvest_interval_days,
-                "verified_by": entry.verified_by,
-                "verification_status": entry.verification_status,
-                "source_url": entry.source_url
-            }
-            break
-
-    if not kb_match and kb_entries:
-        entry = kb_entries[0]
-        kb_match = {
-            "organic_treatment": entry.organic_treatment,
-            "chemical_treatment": entry.chemical_treatment,
-            "active_ingredients": entry.active_ingredients,
-            "dosage": entry.dosage,
-            "application_timing": entry.application_timing,
-            "safety_precautions": entry.safety_precautions,
-            "pre_harvest_interval_days": entry.pre_harvest_interval_days,
-            "verified_by": entry.verified_by,
-            "verification_status": entry.verification_status,
-            "source_url": entry.source_url
-        }
-
-    # 4. Generate Treatment Recommendation
+    # 4. Generate Verified Agronomic Treatment (No generic fallbacks!)
     treatment_recs = TreatmentEngine.generate_recommendation(
+        crop=resolved_crop,
         disease_name=disease_name,
         severity=severity,
-        kb_entry=kb_match or {},
         weather=weather,
-        field_area_acres=field_area
+        field_area_acres=field_area,
+        is_low_confidence=is_low_conf
     )
 
     b64_img = base64.b64encode(image_bytes).decode("utf-8")
     image_url = f"data:image/jpeg;base64,{b64_img[:50000]}..."
 
-    # 5. Persist Scan
+    # 5. Persist Scan History to Database
     scan = Scan(
         client_scan_id=client_scan_id,
         field_id=field_id,
@@ -159,7 +128,7 @@ async def analyze_crop_image(
         severity=severity,
         severity_confidence=diagnosis["severity_confidence"],
         alternatives=diagnosis["alternatives"],
-        grad_cam_url=diagnosis["grad_cam_url"],
+        grad_cam_url=diagnosis.get("grad_cam_url"),
         weather_snapshot=weather,
         treatment_recommendations=treatment_recs,
         spray_window_advice=weather.get("spray_window_advice"),
@@ -167,12 +136,13 @@ async def analyze_crop_image(
     )
     db.add(scan)
 
-    if conf < 0.60 or severity == "Severe":
+    # 6. Auto-escalate if low confidence or severe
+    if is_low_conf or severity == "Severe":
         expert_case = ExpertCase(
             scan_id=scan.id,
             farmer_name=current_user.name,
-            field_name=field.name if field else "Tomato Field",
-            crop=crop_name,
+            field_name=field.name if field else f"{resolved_crop} Field",
+            crop=resolved_crop,
             ai_disease=disease_name,
             ai_confidence=conf,
             ai_severity=severity,
@@ -187,19 +157,60 @@ async def analyze_crop_image(
         "success": True,
         "data": {
             "id": scan.id,
+            "crop": resolved_crop,
             "quality": quality,
             "disease_name": disease_name,
             "confidence": conf,
             "confidence_level": diagnosis["confidence_level"],
+            "is_low_confidence": is_low_conf,
             "severity": severity,
             "severity_confidence": diagnosis["severity_confidence"],
+            "symptoms": diagnosis.get("symptoms", ""),
+            "causes": diagnosis.get("causes", ""),
+            "preventive_measures": diagnosis.get("preventive_measures", ""),
             "alternatives": diagnosis["alternatives"],
-            "grad_cam_url": diagnosis["grad_cam_url"],
+            "grad_cam_url": diagnosis.get("grad_cam_url"),
+            "has_real_grad_cam": diagnosis.get("has_real_grad_cam", False),
+            "explainability_note": diagnosis.get("explainability_note", ""),
             "weather": weather,
             "treatments": treatment_recs,
-            "auto_escalated_to_expert": conf < 0.60 or severity == "Severe"
+            "auto_escalated_to_expert": is_low_conf or severity == "Severe",
+            "can_ask_followup": True
         }
     }
+
+@router.get("/user/history")
+async def get_user_scan_history(
+    limit: int = 15,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Returns authenticated user's scan history with full diagnostic records."""
+    stmt = (
+        select(Scan)
+        .join(Field, Scan.field_id == Field.id)
+        .join(Farm, Field.farm_id == Farm.id)
+        .filter(Farm.user_id == current_user.id)
+        .order_by(Scan.created_at.desc())
+        .limit(limit)
+    )
+    result = await db.execute(stmt)
+    scans = result.scalars().all()
+
+    history = []
+    for s in scans:
+        history.append({
+            "id": s.id,
+            "disease_name": s.disease_name,
+            "confidence": s.confidence,
+            "confidence_level": s.confidence_level,
+            "severity": s.severity,
+            "quality_status": s.quality_status,
+            "created_at": s.created_at.strftime("%Y-%m-%d %H:%M") if s.created_at else "",
+            "spray_window_advice": s.spray_window_advice,
+            "treatments": s.treatment_recommendations
+        })
+    return {"success": True, "data": history}
 
 @router.get("/{scan_id}")
 async def get_scan_by_id(
@@ -233,7 +244,7 @@ async def get_scan_by_id(
     farm = farm_res.scalars().first()
 
     # Reject if owned by another user and current_user is not an authorized officer/expert
-    if not farm or (farm.user_id != current_user.id and current_user.role not in ["EXPERT", "FIELD_OFFICER", "SYS_ADMIN"]):
+    if not farm or (farm.user_id != current_user.id and current_user.role not in ["EXPERT", "FIELD_OFFICER", "OFFICER", "SYS_ADMIN"]):
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Scan record not found."
@@ -280,7 +291,7 @@ async def get_field_scans(
     # Check ownership
     farm_res = await db.execute(select(Farm).filter(Farm.id == field.farm_id))
     farm = farm_res.scalars().first()
-    if not farm or (farm.user_id != current_user.id and current_user.role not in ["EXPERT", "FIELD_OFFICER", "SYS_ADMIN"]):
+    if not farm or (farm.user_id != current_user.id and current_user.role not in ["EXPERT", "FIELD_OFFICER", "OFFICER", "SYS_ADMIN"]):
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Field not found."

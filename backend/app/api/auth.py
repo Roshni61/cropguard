@@ -97,14 +97,67 @@ async def register(user_in: UserRegister, db: AsyncSession = Depends(get_db)):
     }
     return {"access_token": token, "token_type": "bearer", "user": user_dict}
 
+DEMO_USER_EMAILS = {
+    "farmer@cropguard.demo",
+    "expert@cropguard.demo",
+    "officer@cropguard.demo"
+}
+
+@router.get("/demo-config")
+async def get_demo_config():
+    """Provides public demo login availability status and credentials when enabled."""
+    return {
+        "demo_enabled": settings.DEMO_LOGIN_ENABLED,
+        "accounts": [
+            {
+                "role": "FARMER",
+                "label": "Farmer Demo",
+                "email": "farmer@cropguard.demo",
+                "password": "Farmer@123",
+                "button_label": "Continue as Farmer"
+            },
+            {
+                "role": "EXPERT",
+                "label": "Agricultural Expert Demo",
+                "email": "expert@cropguard.demo",
+                "password": "Expert@123",
+                "button_label": "Continue as Expert"
+            },
+            {
+                "role": "OFFICER",
+                "label": "District Officer Demo",
+                "email": "officer@cropguard.demo",
+                "password": "Officer@123",
+                "button_label": "Continue as Officer"
+            }
+        ] if settings.DEMO_LOGIN_ENABLED else []
+    }
+
 @router.post("/login", response_model=TokenResponse)
 async def login(user_in: UserLogin, db: AsyncSession = Depends(get_db)):
     user = None
-    if user_in.email:
-        result = await db.execute(select(User).filter(User.email == user_in.email))
+    email_clean = user_in.email.strip().lower() if user_in.email else None
+    is_demo_email = bool(email_clean and email_clean in DEMO_USER_EMAILS)
+
+    if is_demo_email:
+        if not settings.DEMO_LOGIN_ENABLED:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Demo login is currently disabled by administrator."
+            )
+
+    if email_clean:
+        result = await db.execute(select(User).filter(User.email == email_clean))
         user = result.scalars().first()
+
+        # If demo user not yet provisioned in current DB instance, initialize safely
+        if not user and is_demo_email and settings.DEMO_LOGIN_ENABLED:
+            from app.db.seed import init_demo_accounts
+            init_demo_accounts()
+            result = await db.execute(select(User).filter(User.email == email_clean))
+            user = result.scalars().first()
     elif user_in.phone:
-        result = await db.execute(select(User).filter(User.phone == user_in.phone))
+        result = await db.execute(select(User).filter(User.phone == user_in.phone.strip()))
         user = result.scalars().first()
 
     # Generic error message to never leak whether email or phone exists
@@ -126,6 +179,7 @@ async def login(user_in: UserLogin, db: AsyncSession = Depends(get_db)):
         "district": user.district
     }
     return {"access_token": token, "token_type": "bearer", "user": user_dict}
+
 
 @router.post("/reset-password")
 async def request_password_reset(req: PasswordResetRequest, db: AsyncSession = Depends(get_db)):

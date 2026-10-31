@@ -1,5 +1,5 @@
 import React from "react";
-import { Shield, Globe, UserCheck, Stethoscope, Landmark, LogOut, User } from "lucide-react";
+import { Shield, Globe, UserCheck, Stethoscope, Landmark, LogOut, User, BookOpen, MapPin } from "lucide-react";
 import { useTranslation } from "../i18n/I18nContext";
 import { SyncBadge } from "./SyncBadge";
 
@@ -10,14 +10,23 @@ interface NavbarProps {
   setActiveTab: (tab: string) => void;
   user?: any;
   onLogout?: () => void;
+  farmerMode?: "simple" | "full";
+  onToggleFarmerMode?: () => void;
+  currentDistrictName?: string;
+  onOpenLocationSelector?: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
   currentRole,
   setRole,
+  activeTab,
   setActiveTab,
   user,
   onLogout,
+  farmerMode = "simple",
+  onToggleFarmerMode,
+  currentDistrictName,
+  onOpenLocationSelector,
 }) => {
   const { language, setLanguage, t } = useTranslation();
 
@@ -45,12 +54,60 @@ export const Navbar: React.FC<NavbarProps> = ({
           </div>
         </div>
 
+        {/* Middle Navigation: Crops Guide */}
+        <nav className="hidden lg:flex items-center gap-2">
+          <button
+            onClick={() => setActiveTab("home")}
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer ${
+              activeTab === "home" ? "bg-white/15 text-lime" : "text-white/80 hover:text-white"
+            }`}
+          >
+            Dashboard
+          </button>
+
+          <button
+            onClick={() => setActiveTab("cropguide")}
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+              activeTab === "cropguide" ? "bg-white/15 text-lime" : "text-white/80 hover:text-white"
+            }`}
+          >
+            <BookOpen className="w-3.5 h-3.5 text-lime" />
+            <span>{t("cropGuide", "Crop Guide")}</span>
+          </button>
+
+          {currentDistrictName && (
+            <button
+              onClick={onOpenLocationSelector}
+              className="px-2.5 py-1 bg-white/10 hover:bg-white/15 rounded-xl text-xs text-lime font-medium flex items-center gap-1 border border-white/10 cursor-pointer transition"
+            >
+              <MapPin className="w-3 h-3 text-lime" />
+              <span>{currentDistrictName}</span>
+            </button>
+          )}
+        </nav>
+
         {/* Sync Status & Action Bar */}
         <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
           <SyncBadge />
 
+          {/* Farmer Simple vs Full Dashboard Toggle */}
+          {currentRole === "FARMER" && onToggleFarmerMode && (
+            <button
+              type="button"
+              onClick={onToggleFarmerMode}
+              title={farmerMode === "simple" ? t("switchToFull") : t("switchToSimple")}
+              className={`min-h-[44px] px-3 py-1.5 rounded-2xl text-xs font-black transition-all flex items-center gap-1.5 border cursor-pointer ${
+                farmerMode === "simple"
+                  ? "bg-lime text-forest border-lime shadow-sm hover:bg-lime/90"
+                  : "bg-white/10 hover:bg-white/15 text-white border-white/20"
+              }`}
+            >
+              <span>{farmerMode === "simple" ? "🌾 Simple Mode" : "📊 Full Dashboard"}</span>
+            </button>
+          )}
+
           {/* Language Selector */}
-          <div className="relative flex items-center bg-white/10 hover:bg-white/15 rounded-xl px-2 py-1 border border-white/15 transition">
+          <div className="relative flex items-center min-h-[44px] bg-white/10 hover:bg-white/15 rounded-xl px-2.5 py-1 border border-white/15 transition">
             <Globe className="w-3.5 h-3.5 text-lime mr-1.5" />
             <select
               value={language}
@@ -91,7 +148,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             <button
               onClick={() => setRole("OFFICER")}
               className={`px-2.5 py-1 rounded-xl font-bold transition-all flex items-center gap-1.5 ${
-                currentRole === "OFFICER" 
+                currentRole === "OFFICER" || currentRole === "FIELD_OFFICER"
                   ? "bg-teal-300 text-teal-950 shadow-sm" 
                   : "text-white/80 hover:text-white"
               }`}

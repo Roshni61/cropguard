@@ -44,7 +44,7 @@ def test_weather_aware_spray_warning():
         "dosage": "2g/L",
         "verified_by": "TNAU"
     }
-    recs = TreatmentEngine.generate_recommendation("Early Blight", "Moderate", kb_entry, weather_rainy, field_area_acres=2.0)
+    recs = TreatmentEngine.generate_recommendation("Tomato", "Early Blight", "Moderate", weather_rainy, field_area_acres=2.0)
     assert "DO NOT SPRAY" in recs["weather_warning"]
     assert recs["total_estimated_cost_inr"] == 1700.0 # 850 * 2.0
 

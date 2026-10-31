@@ -11,3 +11,5 @@ services:
         generateValue: true
       - key: CORS_ORIGINS
         value: "*"
+      - key: DEMO_LOGIN_ENABLED
+        value: "true"

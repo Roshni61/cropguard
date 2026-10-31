@@ -17,5 +17,8 @@ class Settings(BaseModel):
     SYNC_DATABASE_URL: str = os.getenv("SYNC_DATABASE_URL", "sqlite:///./cropguard.db")
     
     OPEN_METEO_URL: str = "https://api.open-meteo.com/v1/forecast"
+    DEMO_LOGIN_ENABLED: bool = os.getenv("DEMO_LOGIN_ENABLED", "false").lower() in ("true", "1", "yes")
+    GEMINI_API_KEY: str = os.getenv("GEMINI_API_KEY", "")
+    GEMINI_MODEL: str = os.getenv("GEMINI_MODEL", "gemini-3.5-flash-lite")
 
 settings = Settings()

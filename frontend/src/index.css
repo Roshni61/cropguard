@@ -19,6 +19,10 @@
   --color-ink-3: #8C9C92;
   --color-line: #DFE6DB;
   --color-line-dark: #1E4433;
+  --color-amber-alert: #D97706;
+  --color-orange-alert: #EA580C;
+  --color-orange-soft: #FFF7ED;
+  --color-orange-border: #FDBA74;
   --font-display: "Plus Jakarta Sans", "Manrope", system-ui, sans-serif;
   --font-sans: "Inter", system-ui, sans-serif;
 }

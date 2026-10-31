@@ -9,7 +9,7 @@ interface I18nContextType {
   language: Language;
   setLanguage: (lang: Language) => void;
   t: (key: keyof typeof en, fallback?: string) => string;
-  speakText: (text: string) => void;
+  speakText: (text: string, onEnd?: () => void) => void;
   stopSpeaking: () => void;
   isSpeaking: boolean;
 }
@@ -34,18 +34,40 @@ export const I18nProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return dict[key] || en[key] || fallback || key;
   };
 
-  const speakText = (text: string) => {
-    if (!("speechSynthesis" in window)) return;
+  const speakText = (text: string, onEnd?: () => void) => {
+    if (!("speechSynthesis" in window) || !text.trim()) return;
     window.speechSynthesis.cancel();
 
     const utterance = new SpeechSynthesisUtterance(text);
-    if (language === "ta") utterance.lang = "ta-IN";
-    else if (language === "hi") utterance.lang = "hi-IN";
-    else utterance.lang = "en-US";
+    utterance.rate = 0.92; // Slightly measured pace for rural low-literacy farmers
+
+    if (language === "ta") {
+      utterance.lang = "ta-IN";
+    } else if (language === "hi") {
+      utterance.lang = "hi-IN";
+    } else {
+      utterance.lang = "en-IN";
+    }
+
+    // Try finding a matching language voice if loaded
+    const voices = window.speechSynthesis.getVoices();
+    if (voices && voices.length > 0) {
+      const targetLang = language === "ta" ? "ta" : language === "hi" ? "hi" : "en";
+      const matchedVoice = voices.find(v => v.lang.toLowerCase().startsWith(targetLang));
+      if (matchedVoice) {
+        utterance.voice = matchedVoice;
+      }
+    }
 
     utterance.onstart = () => setIsSpeaking(true);
-    utterance.onend = () => setIsSpeaking(false);
-    utterance.onerror = () => setIsSpeaking(false);
+    utterance.onend = () => {
+      setIsSpeaking(false);
+      if (onEnd) onEnd();
+    };
+    utterance.onerror = () => {
+      setIsSpeaking(false);
+      if (onEnd) onEnd();
+    };
 
     window.speechSynthesis.speak(utterance);
   };

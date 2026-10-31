@@ -85,6 +85,9 @@ export const LeafScanner: React.FC<Props> = ({ src, stage, active }) => {
           );
         })}
       </ol>
+      <div className="md:col-span-2 text-[10px] text-ink-3 italic text-center sm:text-left">
+        ℹ️ Visual animation indicates image pipeline progress; computer vision diagnostic inferences are computed on the server model.
+      </div>
     </div>
   );
 };

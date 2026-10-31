@@ -1,12 +1,24 @@
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.config import settings
 from app.api import auth, farms, scans, treatments, weather, risk, chat, experts, officer, market, schemes, sync
 
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    if settings.DEMO_LOGIN_ENABLED:
+        try:
+            from app.db.seed import init_demo_accounts
+            init_demo_accounts()
+        except Exception as e:
+            print(f"[STARTUP] Demo accounts init notice: {e}")
+    yield
+
 app = FastAPI(
     title=settings.PROJECT_NAME,
     description="Offline-First, Explainable AI Crop Doctor & Agricultural Intelligence Platform",
-    version="1.0.0"
+    version="1.0.0",
+    lifespan=lifespan
 )
 
 # CORS configuration for local dev and PWA frontend
@@ -17,6 +29,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
 
 # Register API Routers
 app.include_router(auth.router, prefix=settings.API_V1_STR)

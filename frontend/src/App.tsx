@@ -12,9 +12,14 @@ import { OfficerDashboardPage } from "./pages/OfficerDashboardPage";
 import { MarketSchemesPage } from "./pages/MarketSchemesPage";
 import { LandingPage } from "./pages/LandingPage";
 import { AuthPage } from "./pages/AuthPage";
+import { FarmerSimpleMode } from "./components/FarmerSimpleMode";
+import { CropGuardKural } from "./components/CropGuardKural";
+import { CropGuidePage } from "./pages/CropGuidePage";
+import { LocationSelectorModal } from "./components/LocationSelectorModal";
+import { TN_DISTRICTS, type TNDistrict, type VillageTown, getTNDistrictById } from "./data/tamilNaduLocations";
 import { fetchWeather, fetchDiseaseRisk, syncSupabaseSessionWithBackend } from "./services/api";
 import { supabase, isSupabaseConfigured } from "./services/supabase";
-import { Camera, Home, Sprout, Bot, Bell, TrendingUp, Shield, Loader2 } from "lucide-react";
+import { Camera, Home, Sprout, Bot, Bell, TrendingUp, Shield, Loader2, LayoutDashboard, Mic, BookOpen } from "lucide-react";
 
 interface MainDashboardProps {
   user: any;
@@ -26,6 +31,45 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ user, onLogout, initialTa
   const { t } = useTranslation();
   const [role, setRole] = useState(user?.role || "FARMER");
   const [activeTab, setActiveTab] = useState(initialTab);
+  const [showKuralModal, setShowKuralModal] = useState(false);
+  const [farmerMode, setFarmerMode] = useState<"simple" | "full">(() => {
+    return (localStorage.getItem("cropguard_farmer_mode") as "simple" | "full") || "simple";
+  });
+
+  // Tamil Nadu District & Village Location State
+  const [currentDistrict, setCurrentDistrict] = useState<TNDistrict>(() => {
+    const stored = localStorage.getItem("cropguard_district_id");
+    return stored ? getTNDistrictById(stored) : (user?.district ? getTNDistrictById(user.district) : TN_DISTRICTS.coimbatore);
+  });
+
+  const [currentTown, setCurrentTown] = useState<VillageTown>(() => {
+    const storedTown = localStorage.getItem("cropguard_town_name");
+    const matched = currentDistrict.townsAndVillages.find(t => t.name === storedTown);
+    return matched || currentDistrict.townsAndVillages[0];
+  });
+
+  const [showLocationModal, setShowLocationModal] = useState(false);
+
+  const handleLocationChange = (newDist: TNDistrict, newTown: VillageTown) => {
+    setCurrentDistrict(newDist);
+    setCurrentTown(newTown);
+    localStorage.setItem("cropguard_district_id", newDist.id);
+    localStorage.setItem("cropguard_town_name", newTown.name);
+    fetchWeather(newDist.lat, newDist.lng).then(w => w && setWeatherData(w));
+    fetchDiseaseRisk(newDist.name).then(r => r && setRiskData(r));
+  };
+
+  useEffect(() => {
+    if (user?.role) {
+      setRole(user.role);
+    }
+  }, [user]);
+
+  const toggleFarmerMode = () => {
+    const next = farmerMode === "simple" ? "full" : "simple";
+    setFarmerMode(next);
+    localStorage.setItem("cropguard_farmer_mode", next);
+  };
 
   useEffect(() => {
     if (initialTab) {
@@ -47,7 +91,7 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ user, onLogout, initialTa
 
   const [riskData, setRiskData] = useState<any>({
     crop: "Tomato",
-    district: user?.district || "Coimbatore",
+    district: currentDistrict.name,
     risk_score_percent: 81,
     risk_level: "HIGH",
     contributing_factors: [
@@ -55,13 +99,13 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ user, onLogout, initialTa
       "Rainfall probability (82%)",
       "17 cluster cases in district"
     ],
-    advisory: `⚠️ High Early Blight Risk (81%) in ${user?.district || "Coimbatore"}. Warm temperatures and high humidity create ideal conditions for fungal spore spread.`
+    advisory: `⚠️ High Early Blight Risk (81%) in ${currentDistrict.name}. Warm temperatures and high humidity create ideal conditions for fungal spore spread.`
   });
 
   useEffect(() => {
-    fetchWeather().then(w => w && setWeatherData(w));
-    fetchDiseaseRisk(user?.district || "Coimbatore").then(r => r && setRiskData(r));
-  }, [user]);
+    fetchWeather(currentDistrict.lat, currentDistrict.lng).then(w => w && setWeatherData(w));
+    fetchDiseaseRisk(currentDistrict.name).then(r => r && setRiskData(r));
+  }, [currentDistrict]);
 
   const handleDiagnosisComplete = (data: any) => {
     setDiagnosisData(data);
@@ -83,24 +127,51 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ user, onLogout, initialTa
         setActiveTab={setActiveTab}
         user={user}
         onLogout={onLogout}
+        farmerMode={farmerMode}
+        onToggleFarmerMode={toggleFarmerMode}
+        currentDistrictName={currentDistrict.name}
+        onOpenLocationSelector={() => setShowLocationModal(true)}
       />
 
       {/* Main Screen Content */}
       <main className="flex-1 max-w-6xl w-full mx-auto p-4 sm:p-6">
         {role === "EXPERT" ? (
           <ExpertDashboardPage />
-        ) : role === "OFFICER" ? (
+        ) : role === "OFFICER" || role === "FIELD_OFFICER" ? (
           <OfficerDashboardPage />
         ) : (
           <>
             {activeTab === "home" && (
-              <FarmerHome
-                onScanClick={() => setActiveTab("scanner")}
-                onNavigate={setActiveTab}
-                weatherData={weatherData}
-                riskData={riskData}
-                onSelectSampleImage={handleSampleSelect}
-              />
+              farmerMode === "simple" ? (
+                <FarmerSimpleMode
+                  onScanClick={() => setActiveTab("scanner")}
+                  onNavigateToTab={setActiveTab}
+                  onSwitchToFull={() => {
+                    setFarmerMode("full");
+                    localStorage.setItem("cropguard_farmer_mode", "full");
+                  }}
+                  weatherData={weatherData}
+                  riskData={riskData}
+                  userName={user?.name || "Farmer"}
+                  userDistrict={currentDistrict.name}
+                />
+              ) : (
+                <FarmerHome
+                  onScanClick={() => setActiveTab("scanner")}
+                  onNavigate={setActiveTab}
+                  weatherData={weatherData}
+                  riskData={riskData}
+                  onSelectSampleImage={handleSampleSelect}
+                  onSwitchToSimple={() => {
+                    setFarmerMode("simple");
+                    localStorage.setItem("cropguard_farmer_mode", "simple");
+                  }}
+                  user={user}
+                  currentDistrict={currentDistrict}
+                  currentTown={currentTown}
+                  onLocationChange={handleLocationChange}
+                />
+              )
             )}
 
             {activeTab === "scanner" && (
@@ -118,6 +189,14 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ user, onLogout, initialTa
               />
             )}
 
+            {activeTab === "cropguide" && (
+              <CropGuidePage
+                onScanCrop={(_crop) => {
+                  setActiveTab("scanner");
+                }}
+              />
+            )}
+
             {activeTab === "fields" && <FieldsPage />}
 
             {activeTab === "assistant" && <AssistantPage />}
@@ -132,69 +211,149 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ user, onLogout, initialTa
       {/* Bottom Navigation Bar for Mobile Outdoor Ergonomics (FARMER ROLE) */}
       {role === "FARMER" && (
         <footer className="sticky bottom-0 z-40 bg-white/95 backdrop-blur-md border-t border-line py-2.5 px-4 shadow-[var(--shadow-lift)]">
-          <div className="max-w-md mx-auto flex items-center justify-around">
-            <button
-              onClick={() => setActiveTab("home")}
-              className={`flex flex-col items-center gap-1 font-bold text-[10px] transition-all cursor-pointer ${
-                activeTab === "home" ? "text-forest scale-105 font-black" : "text-ink-2 hover:text-ink"
-              }`}
-            >
-              <Home className="w-5 h-5" />
-              <span>Home</span>
-            </button>
+          {farmerMode === "simple" ? (
+            /* SIMPLIFIED 4-BUTTON TOUCH BAR IN SIMPLE MODE */
+            <div className="max-w-md mx-auto flex items-center justify-around">
+              <button
+                type="button"
+                onClick={() => setActiveTab("home")}
+                className={`min-h-[48px] min-w-[48px] flex flex-col items-center justify-center gap-1 font-bold text-[11px] transition-all cursor-pointer ${
+                  activeTab === "home" ? "text-forest scale-105 font-black" : "text-ink-2 hover:text-ink"
+                }`}
+              >
+                <Home className="w-5 h-5 stroke-[2.2]" />
+                <span>Home</span>
+              </button>
 
-            <button
-              onClick={() => setActiveTab("fields")}
-              className={`flex flex-col items-center gap-1 font-bold text-[10px] transition-all cursor-pointer ${
-                activeTab === "fields" ? "text-forest scale-105 font-black" : "text-ink-2 hover:text-ink"
-              }`}
-            >
-              <Sprout className="w-5 h-5" />
-              <span>{t("myFields")}</span>
-            </button>
+              <button
+                type="button"
+                onClick={() => setShowKuralModal(true)}
+                className={`min-h-[48px] min-w-[48px] flex flex-col items-center justify-center gap-1 font-bold text-[11px] transition-all cursor-pointer ${
+                  showKuralModal ? "text-forest scale-105 font-black" : "text-ink-2 hover:text-ink"
+                }`}
+              >
+                <Mic className="w-5 h-5 stroke-[2.2] text-forest" />
+                <span>Talk</span>
+              </button>
 
-            <button
-              onClick={() => setActiveTab("scanner")}
-              className="flex flex-col items-center gap-1 font-bold text-[10px] text-white -mt-6 cursor-pointer"
-            >
-              <div className="w-14 h-14 rounded-full bg-forest flex items-center justify-center shadow-lg border-4 border-white hover:scale-105 active:scale-95 transition-transform">
-                <Camera className="w-7 h-7 stroke-[2.5] text-lime" />
-              </div>
-              <span className="text-forest font-black -mt-0.5 tracking-wider">SCAN</span>
-            </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab("scanner")}
+                className="flex flex-col items-center gap-1 font-bold text-[11px] text-white -mt-6 cursor-pointer"
+              >
+                <div className="w-14 h-14 rounded-full bg-forest flex items-center justify-center shadow-lg border-4 border-white hover:scale-105 active:scale-95 transition-transform">
+                  <Camera className="w-7 h-7 stroke-[2.5] text-lime" />
+                </div>
+                <span className="text-forest font-black -mt-0.5 tracking-wider">SCAN</span>
+              </button>
 
-            <button
-              onClick={() => setActiveTab("assistant")}
-              className={`flex flex-col items-center gap-1 font-bold text-[10px] transition-all cursor-pointer ${
-                activeTab === "assistant" ? "text-forest scale-105 font-black" : "text-ink-2 hover:text-ink"
-              }`}
-            >
-              <Bot className="w-5 h-5" />
-              <span>Assistant</span>
-            </button>
+              <button
+                type="button"
+                onClick={toggleFarmerMode}
+                className="min-h-[48px] min-w-[48px] flex flex-col items-center justify-center gap-1 font-bold text-[11px] text-forest-2 hover:text-forest transition-all cursor-pointer"
+              >
+                <LayoutDashboard className="w-5 h-5 stroke-[2.2]" />
+                <span>Full</span>
+              </button>
+            </div>
+          ) : (
+            /* FULL 6-TAB ERGONOMIC BAR IN FULL MODE */
+            <div className="max-w-md mx-auto flex items-center justify-around">
+              <button
+                type="button"
+                onClick={() => setActiveTab("home")}
+                className={`min-h-[48px] min-w-[48px] flex flex-col items-center justify-center gap-1 font-bold text-[10px] transition-all cursor-pointer ${
+                  activeTab === "home" ? "text-forest scale-105 font-black" : "text-ink-2 hover:text-ink"
+                }`}
+              >
+                <Home className="w-5 h-5 stroke-[2.2]" />
+                <span>Home</span>
+              </button>
 
-            <button
-              onClick={() => setActiveTab("alerts")}
-              className={`flex flex-col items-center gap-1 font-bold text-[10px] transition-all cursor-pointer ${
-                activeTab === "alerts" ? "text-forest scale-105 font-black" : "text-ink-2 hover:text-ink"
-              }`}
-            >
-              <Bell className="w-5 h-5" />
-              <span>Alerts</span>
-            </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab("fields")}
+                className={`min-h-[48px] min-w-[48px] flex flex-col items-center justify-center gap-1 font-bold text-[10px] transition-all cursor-pointer ${
+                  activeTab === "fields" ? "text-forest scale-105 font-black" : "text-ink-2 hover:text-ink"
+                }`}
+              >
+                <Sprout className="w-5 h-5 stroke-[2.2]" />
+                <span>{t("myFields")}</span>
+              </button>
 
-            <button
-              onClick={() => setActiveTab("market")}
-              className={`flex flex-col items-center gap-1 font-bold text-[10px] transition-all cursor-pointer ${
-                activeTab === "market" ? "text-forest scale-105 font-black" : "text-ink-2 hover:text-ink"
-              }`}
-            >
-              <TrendingUp className="w-5 h-5" />
-              <span>Market</span>
-            </button>
-          </div>
+              <button
+                type="button"
+                onClick={() => setActiveTab("scanner")}
+                className="flex flex-col items-center gap-1 font-bold text-[10px] text-white -mt-6 cursor-pointer"
+              >
+                <div className="w-14 h-14 rounded-full bg-forest flex items-center justify-center shadow-lg border-4 border-white hover:scale-105 active:scale-95 transition-transform">
+                  <Camera className="w-7 h-7 stroke-[2.5] text-lime" />
+                </div>
+                <span className="text-forest font-black -mt-0.5 tracking-wider">SCAN</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setActiveTab("assistant")}
+                className={`min-h-[48px] min-w-[48px] flex flex-col items-center justify-center gap-1 font-bold text-[10px] transition-all cursor-pointer ${
+                  activeTab === "assistant" ? "text-forest scale-105 font-black" : "text-ink-2 hover:text-ink"
+                }`}
+              >
+                <Bot className="w-5 h-5 stroke-[2.2]" />
+                <span>Assistant</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setActiveTab("alerts")}
+                className={`min-h-[48px] min-w-[48px] flex flex-col items-center justify-center gap-1 font-bold text-[10px] transition-all cursor-pointer ${
+                  activeTab === "alerts" ? "text-forest scale-105 font-black" : "text-ink-2 hover:text-ink"
+                }`}
+              >
+                <Bell className="w-5 h-5 stroke-[2.2]" />
+                <span>Alerts</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setActiveTab("cropguide")}
+                className={`min-h-[48px] min-w-[48px] flex flex-col items-center justify-center gap-1 font-bold text-[10px] transition-all cursor-pointer ${
+                  activeTab === "cropguide" ? "text-forest scale-105 font-black" : "text-ink-2 hover:text-ink"
+                }`}
+              >
+                <BookOpen className="w-5 h-5 stroke-[2.2]" />
+                <span>{t("crops", "Crops")}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setActiveTab("market")}
+                className={`min-h-[48px] min-w-[48px] flex flex-col items-center justify-center gap-1 font-bold text-[10px] transition-all cursor-pointer ${
+                  activeTab === "market" ? "text-forest scale-105 font-black" : "text-ink-2 hover:text-ink"
+                }`}
+              >
+                <TrendingUp className="w-5 h-5 stroke-[2.2]" />
+                <span>Market</span>
+              </button>
+            </div>
+          )}
         </footer>
       )}
+
+      {/* Location Selector Modal */}
+      <LocationSelectorModal
+        isOpen={showLocationModal}
+        onClose={() => setShowLocationModal(false)}
+        currentDistrictId={currentDistrict.id}
+        currentTownName={currentTown.name}
+        onSelectLocation={handleLocationChange}
+      />
+
+      {/* CROPGUARD KURAL: MULTILINGUAL VOICE FARMING AGENT */}
+      <CropGuardKural
+        isOpen={showKuralModal}
+        onClose={() => setShowKuralModal(false)}
+      />
     </div>
   );
 };
@@ -224,6 +383,9 @@ export default function App() {
     }
     if (path === "/auth/callback" || hash.includes("access_token=")) {
       return "callback";
+    }
+    if (path === "/login" || path === "/auth") {
+      return "login";
     }
 
     const savedToken = localStorage.getItem("cropguard_token");

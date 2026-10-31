@@ -2,7 +2,8 @@ import React, { useState, useEffect, useRef } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import { 
   Shield, Eye, EyeOff, Loader2, ArrowLeft, AlertCircle, 
-  CheckCircle2, Sprout, KeyRound, Mail, Phone, Lock 
+  CheckCircle2, Sprout, KeyRound, Mail, Phone, Lock,
+  Sparkles, Stethoscope, Landmark, X, ArrowRight
 } from "lucide-react";
 import { loginAPI, registerAPI, requestPasswordResetAPI, syncSupabaseSessionWithBackend } from "../services/api";
 import { supabase, isSupabaseConfigured, getRedirectUrl } from "../services/supabase";
@@ -65,6 +66,101 @@ export const AuthPage: React.FC<AuthPageProps> = ({
   const [language, setLanguage] = useState("en");
   const [state, setState] = useState("Tamil Nadu");
   const [district, setDistrict] = useState("Coimbatore");
+
+  // Demo Login State
+  const [showDemoModal, setShowDemoModal] = useState(false);
+  const [demoSubmittingRole, setDemoSubmittingRole] = useState<string | null>(null);
+  const isDemoEnabled = import.meta.env.VITE_DEMO_LOGIN_ENABLED !== "false";
+
+  // Escape key listener for demo modal
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setShowDemoModal(false);
+      }
+    };
+    if (showDemoModal) {
+      window.addEventListener("keydown", handleKeyDown);
+    }
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [showDemoModal]);
+
+  // Preconfigured Demo Accounts Specification
+  const demoAccounts = [
+    {
+      role: "FARMER",
+      title: "Farmer Demo",
+      email: "farmer@cropguard.demo",
+      password: "Farmer@123",
+      buttonLabel: "Continue as Farmer",
+      description: "Access farmer dashboard, crop health indicators, and field diagnosis.",
+      icon: Sprout,
+      accentColor: "border-emerald-200 hover:border-emerald-400 hover:bg-emerald-50/40",
+      iconBg: "bg-emerald-100 text-emerald-800",
+      badge: "Farmer Demo"
+    },
+    {
+      role: "EXPERT",
+      title: "Agricultural Expert Demo",
+      email: "expert@cropguard.demo",
+      password: "Expert@123",
+      buttonLabel: "Continue as Expert",
+      description: "Access Human-in-the-Loop review queue and validate crop diagnoses.",
+      icon: Stethoscope,
+      accentColor: "border-amber-200 hover:border-amber-400 hover:bg-amber-50/40",
+      iconBg: "bg-amber-100 text-amber-800",
+      badge: "Expert Demo"
+    },
+    {
+      role: "OFFICER",
+      title: "District Officer Demo",
+      email: "officer@cropguard.demo",
+      password: "Officer@123",
+      buttonLabel: "Continue as Officer",
+      description: "Access District Command dashboard, outbreak tracking, and emergency alerts.",
+      icon: Landmark,
+      accentColor: "border-teal-200 hover:border-teal-400 hover:bg-teal-50/40",
+      iconBg: "bg-teal-100 text-teal-800",
+      badge: "Officer Demo"
+    }
+  ];
+
+  const handleSelectDemoAccount = async (
+    account: typeof demoAccounts[0],
+    autoSubmit: boolean
+  ) => {
+    // Fill credentials into existing email and password fields
+    setCredentialType("email");
+    setEmail(account.email);
+    setPassword(account.password);
+    setErrorMsg(null);
+    setSuccessMsg(null);
+
+    // If autofill only, close modal and allow user to click the existing Sign In button
+    if (!autoSubmit) {
+      setShowDemoModal(false);
+      return;
+    }
+
+    // Direct authentic submission through the genuine backend authentication API
+    setDemoSubmittingRole(account.role);
+    setLoading(true);
+    try {
+      const res = await loginAPI({
+        email: account.email,
+        password: account.password,
+      });
+      setShowDemoModal(false);
+      localStorage.setItem("cropguard_token", res.access_token);
+      localStorage.setItem("cropguard_user", JSON.stringify(res.user));
+      onAuthSuccess(res.user, res.access_token);
+    } catch (err: any) {
+      setErrorMsg(err.message || "Failed to authenticate demo account. Please verify backend is running.");
+    } finally {
+      setLoading(false);
+      setDemoSubmittingRole(null);
+    }
+  };
 
   // Focus error message for accessibility
   useEffect(() => {
@@ -265,7 +361,8 @@ export const AuthPage: React.FC<AuthPageProps> = ({
       } else {
         // Sign In Mode
         if (credentialType === "email") {
-          if (isSupabaseConfigured && supabase) {
+          const isDemoEmail = email.trim().toLowerCase().endsWith("@cropguard.demo");
+          if (!isDemoEmail && isSupabaseConfigured && supabase) {
             const { data: supaData, error: supaErr } = await supabase.auth.signInWithPassword({
               email: email.trim(),
               password,
@@ -759,6 +856,24 @@ export const AuthPage: React.FC<AuthPageProps> = ({
                 )}
               </button>
 
+              {/* Try Demo Login Option */}
+              {mode === "login" && isDemoEnabled && (
+                <div className="pt-2 text-center">
+                  <button
+                    type="button"
+                    onClick={() => setShowDemoModal(true)}
+                    id="try-demo-login-btn"
+                    className="inline-flex items-center gap-1.5 text-xs font-bold text-forest hover:text-forest-hover hover:underline cursor-pointer py-1.5 px-3 rounded-lg hover:bg-forest/5 transition border border-transparent hover:border-forest/15"
+                  >
+                    <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                    <span>Try Demo Login</span>
+                    <span className="text-[10px] font-extrabold uppercase px-1.5 py-0.5 rounded-md bg-lime/40 text-forest border border-forest/15">
+                      Instant Access
+                    </span>
+                  </button>
+                </div>
+              )}
+
               {/* WORKED EXAMPLE REQUIREMENT:
                   Divider labeled "or", then two outlined buttons: "Continue with Google" and "Continue with GitHub" */}
               <div className="relative my-4">
@@ -827,6 +942,146 @@ export const AuthPage: React.FC<AuthPageProps> = ({
           )}
         </div>
       </motion.div>
+
+      {/* DEMO LOGIN MODAL */}
+      {showDemoModal && (
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200"
+          onClick={() => setShowDemoModal(false)}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="demo-modal-title"
+        >
+          <div 
+            className="bg-white rounded-3xl max-w-xl w-full p-6 sm:p-7 shadow-2xl border border-line relative max-h-[92vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div className="flex items-start justify-between pb-4 border-b border-line">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-forest/10 text-forest flex items-center justify-center shadow-xs">
+                  <Sparkles className="w-5 h-5 text-amber-500" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 id="demo-modal-title" className="font-extrabold text-forest text-lg tracking-tight">
+                      Try Demo Login
+                    </h3>
+                    <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 border border-amber-300">
+                      Demonstration Only
+                    </span>
+                  </div>
+                  <p className="text-xs text-ink-2 mt-0.5">
+                    Select a preconfigured demonstration account to explore specialized role dashboards.
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowDemoModal(false)}
+                aria-label="Close demo modal"
+                className="p-1.5 rounded-full hover:bg-paper text-ink-3 hover:text-ink transition cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Account Selection Options */}
+            <div className="space-y-3.5 py-4">
+              {demoAccounts.map((account) => {
+                const IconComponent = account.icon;
+                const isSubmitting = loading && demoSubmittingRole === account.role;
+
+                return (
+                  <div
+                    key={account.role}
+                    className={`rounded-2xl border p-4 transition-all bg-white hover:shadow-md ${account.accentColor}`}
+                  >
+                    <div className="flex items-start justify-between gap-3 mb-2">
+                      <div className="flex items-center gap-2.5">
+                        <div className={`w-8 h-8 rounded-xl flex items-center justify-center shadow-xs ${account.iconBg}`}>
+                          <IconComponent className="w-4 h-4 stroke-[2.2]" />
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <h4 className="font-extrabold text-forest text-sm">
+                              {account.title}
+                            </h4>
+                            <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-paper text-ink-2 border border-line">
+                              Demonstration Account
+                            </span>
+                          </div>
+                          <p className="text-[11px] text-ink-2 line-clamp-1">
+                            {account.description}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Credentials Info Box */}
+                    <div className="bg-paper/80 rounded-xl p-2.5 mb-3 border border-line text-xs font-mono flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 text-ink-2">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[10px] uppercase font-bold text-ink-3 tracking-wider font-sans">Email:</span>
+                        <span className="text-forest font-bold select-all">{account.email}</span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[10px] uppercase font-bold text-ink-3 tracking-wider font-sans">Password:</span>
+                        <span className="text-forest font-bold select-all">{account.password}</span>
+                      </div>
+                    </div>
+
+                    {/* Action Buttons: Autofill OR Continue Direct */}
+                    <div className="flex items-center justify-end gap-2 pt-1 border-t border-line/60">
+                      <button
+                        type="button"
+                        onClick={() => handleSelectDemoAccount(account, false)}
+                        title="Fill fields on the login page and let me click Sign In"
+                        className="px-3 py-1.5 text-xs font-bold text-forest hover:text-forest-2 hover:bg-forest/5 rounded-xl border border-forest/20 transition cursor-pointer"
+                      >
+                        Autofill Credentials
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => handleSelectDemoAccount(account, true)}
+                        disabled={loading}
+                        className="px-4 py-1.5 text-xs font-bold text-cream bg-forest hover:bg-forest-hover rounded-xl shadow-xs hover:shadow-sm border border-lime/30 transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                      >
+                        {isSubmitting ? (
+                          <>
+                            <Loader2 className="w-3.5 h-3.5 animate-spin text-lime" />
+                            <span>Authenticating...</span>
+                          </>
+                        ) : (
+                          <>
+                            <span>{account.buttonLabel}</span>
+                            <ArrowRight className="w-3.5 h-3.5 text-lime" />
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Modal Footer Note */}
+            <div className="pt-3 border-t border-line flex flex-col sm:flex-row items-center justify-between text-[11px] text-ink-3 gap-2">
+              <span className="flex items-center gap-1">
+                <Shield className="w-3.5 h-3.5 text-forest" />
+                <span>Genuine authentication via backend session API.</span>
+              </span>
+              <button
+                type="button"
+                onClick={() => setShowDemoModal(false)}
+                className="font-bold text-forest hover:underline cursor-pointer"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

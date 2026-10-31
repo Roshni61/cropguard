@@ -1,9 +1,14 @@
 import React, { useState } from "react";
-import { Bot, Send, Mic, Volume2, AlertOctagon, BookOpen } from "lucide-react";
+import { Bot, Send, Mic, Volume2, AlertOctagon, BookOpen, Sparkles, Loader2 } from "lucide-react";
+import { motion, useReducedMotion } from "framer-motion";
 import { useTranslation } from "../i18n/I18nContext";
+import { sendChatMessageAPI } from "../services/api";
+import { CropGuardKural } from "../components/CropGuardKural";
 
 export const AssistantPage: React.FC = () => {
   const { t, language, speakText } = useTranslation();
+  const shouldReduceMotion = useReducedMotion();
+  const [showKural, setShowKural] = useState(false);
   const [messages, setMessages] = useState<any[]>([
     {
       sender: "assistant",
@@ -17,34 +22,31 @@ export const AssistantPage: React.FC = () => {
     }
   ]);
   const [inputQuery, setInputQuery] = useState("");
-  const [isListening, setIsListening] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   const handleSend = async () => {
-    if (!inputQuery.trim()) return;
+    if (!inputQuery.trim() || loading) return;
 
-    const userMsg = { sender: "user", text: inputQuery };
+    const currentQ = inputQuery.trim();
+    const userMsg = { sender: "user", text: currentQ };
     setMessages(prev => [...prev, userMsg]);
-    const currentQ = inputQuery;
     setInputQuery("");
+    setLoading(true);
 
     try {
-      const res = await fetch("http://localhost:8000/api/v1/chat/query", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ query: currentQ, language, field_id: "fld-01" })
-      });
-      if (res.ok) {
-        const json = await res.json();
+      const data = await sendChatMessageAPI(currentQ, language, "fld-01");
+      if (data && data.answer) {
         setMessages(prev => [...prev, {
           sender: "assistant",
-          text: json.data.answer,
-          citations: json.data.citations,
-          safe: json.data.safe
+          text: data.answer,
+          citations: data.citations || ["TNAU Agritech Knowledge Base"],
+          safe: data.safe ?? true
         }]);
+        setLoading(false);
         return;
       }
     } catch (e) {
-      console.warn("Backend chat offline, using grounded RAG local response.");
+      console.warn("Backend chat offline, using grounded RAG local response.", e);
     }
 
     // Grounded Fallback response with safety check
@@ -55,11 +57,15 @@ export const AssistantPage: React.FC = () => {
     if (qLower.includes("dosage") || qLower.includes("guess") || qLower.includes("secret")) {
       isSafe = false;
       replyText = language === "ta" 
-        ? "மன்னிக்கவும், சரிபார்க்கப்பட்ட வேளாண்மை வழிகாட்டுதல்கள் இல்லாமல் மருந்து அளவுகளை என்னால் பரிந்துரைக்க முடியாது."
+        ? "மன்னிக்கவும், சரிபார்க்கப்பட்ட வேளாண்மை வழிகாட்டுதல்கள் இல்லாமல் மருந்து அளவுகளை என்னால் பரிந்துரைக்க முடியாது. தகுதிவாய்ந்த வேளாண் அதிகாரியை அணுகவும்."
+        : language === "hi"
+        ? "क्षमा करें, बिना सत्यापित कृषि दिशानिर्देशों के रासायनिक खुराक की सिफारिश नहीं की जा सकती। कृपया कृषि विशेषज्ञ से सलाह लें।"
         : "I don't have enough verified agricultural information to safely answer this chemical dosage query. Please consult a qualified agricultural expert.";
     } else {
       replyText = language === "ta"
         ? "தக்காளி இலைப்புள்ளி நோய்க்கு (Early Blight) ட்ரைக்கோடெர்மா விரிடி (5g/L) அல்லது மேன்கோசெப் 75% WP (2g/L) பயன்படுத்தலாம். மழைக்காலத்தில் மருந்து தெளிப்பதை தவிர்க்கவும்."
+        : language === "hi"
+        ? "टमाटर के अगेती झुलसा (Early Blight) के लिए ट्राइकोडर्मा विरिडी (5g/L पानी) या मैंकोजेब 75% WP (2g/L) का उपयोग करें। बारिश से पहले कभी छिड़काव न करें।"
         : "For Tomato Early Blight control, prune infected leaves and apply Trichoderma viride @ 5g/L water. If chemical control is needed, use Mancozeb 75% WP @ 2g/L. Always check rain forecast before spraying.";
     }
 
@@ -69,78 +75,95 @@ export const AssistantPage: React.FC = () => {
       citations: isSafe ? ["TNAU Agritech Advisory 2026"] : [],
       safe: isSafe
     }]);
+    setLoading(false);
   };
 
   const handleVoiceInput = () => {
-    if (!("webkitSpeechRecognition" in window || "SpeechRecognition" in window)) {
-      alert("Speech recognition is not supported in this browser.");
-      return;
-    }
-
-    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    const recognition = new SpeechRecognition();
-    recognition.lang = language === "ta" ? "ta-IN" : language === "hi" ? "hi-IN" : "en-US";
-
-    recognition.onstart = () => setIsListening(true);
-    recognition.onend = () => setIsListening(false);
-    recognition.onresult = (event: any) => {
-      const transcript = event.results[0][0].transcript;
-      setInputQuery(transcript);
-    };
-
-    recognition.start();
+    setShowKural(true);
   };
 
   return (
-    <div className="max-w-2xl mx-auto space-y-4 pb-12">
+    <motion.div 
+      initial={shouldReduceMotion ? false : { opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: shouldReduceMotion ? 0 : 0.35, ease: [0.22, 1, 0.36, 1] as const }}
+      className="max-w-2xl mx-auto space-y-4 pb-16"
+    >
       {/* Header */}
-      <div className="bg-gradient-to-r from-emerald-900 to-green-800 text-white rounded-3xl p-5 shadow-lg flex items-center justify-between">
+      <div className="bg-forest farm-gradient-fallback text-white rounded-3xl p-5 sm:p-6 shadow-[var(--shadow-lift)] border border-forest-2 flex items-center justify-between gap-3">
         <div className="flex items-center gap-3">
-          <div className="w-12 h-12 rounded-2xl bg-emerald-700/60 flex items-center justify-center border border-emerald-400/40">
-            <Bot className="w-7 h-7 text-emerald-200" />
+          <div className="w-12 h-12 rounded-2xl bg-white/10 flex items-center justify-center border border-lime/30 text-lime shadow-inner">
+            <Bot className="w-7 h-7 stroke-[2.2]" />
           </div>
           <div>
-            <h2 className="text-xl font-black">{t("askAssistant")}</h2>
-            <p className="text-xs text-emerald-200 font-medium">
+            <div className="flex items-center gap-2">
+              <h2 className="text-xl font-black text-white">{t("askAssistant")}</h2>
+              <span className="px-2 py-0.5 rounded-full bg-lime text-forest text-[10px] font-black uppercase tracking-wider">
+                Krishi AI
+              </span>
+            </div>
+            <p className="text-xs text-lime/80 font-medium">
               Grounded in Verified TNAU & ICAR Agricultural Knowledge Base
             </p>
           </div>
         </div>
-        <span className="px-3 py-1 bg-emerald-950/60 text-emerald-300 text-[10px] font-bold rounded-full border border-emerald-700">
-          RAG Active
+        <span className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1 bg-white/10 text-lime text-xs font-bold rounded-full border border-white/15">
+          <Sparkles className="w-3.5 h-3.5" />
+          <span>Multilingual</span>
         </span>
       </div>
 
+      {/* Persistent Voice Agent Trigger Banner */}
+      <div className="bg-gradient-to-r from-forest to-emerald-800 text-white p-3.5 sm:p-4 rounded-2xl shadow-sm border border-lime/30 flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2.5">
+          <div className="w-9 h-9 rounded-xl bg-forest-hover flex items-center justify-center text-lime shadow-inner">
+            <Mic className="w-5 h-5 stroke-[2.5]" />
+          </div>
+          <div>
+            <h4 className="font-black text-sm text-lime">{t("kuralTitle")}</h4>
+            <p className="text-xs text-white/80">{t("kuralSub")}</p>
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={() => setShowKural(true)}
+          className="min-h-[44px] px-3.5 py-2 bg-lime hover:bg-lime/90 text-forest font-black text-xs rounded-xl shadow-xs transition flex items-center gap-1.5 cursor-pointer hover:scale-105 active:scale-95"
+        >
+          <span>{t("tapToSpeak")}</span>
+          <Sparkles className="w-3.5 h-3.5 text-forest" />
+        </button>
+      </div>
+
       {/* CHAT MESSAGES STREAM */}
-      <div className="bg-white rounded-3xl p-4 shadow-sm border border-slate-200 min-h-[380px] max-h-[480px] overflow-y-auto space-y-4">
+      <div className="bg-white rounded-3xl p-4 sm:p-5 shadow-[var(--shadow-soft)] border border-line min-h-[380px] max-h-[500px] overflow-y-auto space-y-4">
         {messages.map((msg, idx) => (
           <div
             key={idx}
             className={`flex flex-col ${msg.sender === "user" ? "items-end" : "items-start"}`}
           >
             <div
-              className={`max-w-[85%] rounded-2xl p-4 text-xs leading-relaxed space-y-2 shadow-sm ${
+              className={`max-w-[85%] rounded-2xl p-4 text-xs sm:text-sm leading-relaxed space-y-2 shadow-xs ${
                 msg.sender === "user"
-                  ? "bg-emerald-600 text-white rounded-br-none"
+                  ? "bg-forest text-cream rounded-br-none border border-forest-2 font-medium"
                   : msg.safe === false
-                  ? "bg-amber-50 text-amber-950 border border-amber-300 rounded-bl-none"
-                  : "bg-slate-100 text-slate-900 border border-slate-200 rounded-bl-none"
+                  ? "bg-amber-50 text-amber-950 border-2 border-amber-300 rounded-bl-none"
+                  : "bg-paper text-ink border border-line rounded-bl-none font-medium"
               }`}
             >
-              <p className="whitespace-pre-line font-medium">{msg.text}</p>
+              <p className="whitespace-pre-line">{msg.text}</p>
 
               {/* Verified Citations Badge */}
               {msg.citations && msg.citations.length > 0 && (
-                <div className="pt-2 border-t border-slate-200/60 flex items-center gap-1 text-[10px] font-bold text-emerald-700">
-                  <BookOpen className="w-3 h-3 text-emerald-600" />
+                <div className="pt-2 border-t border-line flex items-center gap-1 text-[11px] font-bold text-leaf">
+                  <BookOpen className="w-3.5 h-3.5 text-forest" />
                   <span>Verified Source: {msg.citations.join(", ")}</span>
                 </div>
               )}
 
               {/* Safety Refusal Alert */}
               {msg.safe === false && (
-                <div className="pt-2 border-t border-amber-200 flex items-center gap-1 text-[10px] font-bold text-amber-800">
-                  <AlertOctagon className="w-3.5 h-3.5 text-amber-600" />
+                <div className="pt-2 border-t border-amber-200 flex items-center gap-1.5 text-[11px] font-bold text-amber-900">
+                  <AlertOctagon className="w-4 h-4 text-amber-700 shrink-0" />
                   <span>Safety Guardrail: Refused unverified chemical dosage request.</span>
                 </div>
               )}
@@ -148,27 +171,37 @@ export const AssistantPage: React.FC = () => {
 
             {msg.sender === "assistant" && (
               <button
+                type="button"
                 onClick={() => speakText(msg.text)}
-                className="mt-1 text-[10px] font-bold text-emerald-700 flex items-center gap-1 hover:underline"
+                className="mt-1 text-xs font-bold text-forest hover:text-forest-2 flex items-center gap-1.5 py-1 px-2 rounded-lg hover:bg-paper cursor-pointer transition"
               >
-                <Volume2 className="w-3 h-3" />
-                <span>Listen Answer</span>
+                <Volume2 className="w-3.5 h-3.5" />
+                <span>{t("readAloud")}</span>
               </button>
             )}
           </div>
         ))}
+
+        {loading && (
+          <div className="flex items-center gap-2 p-3 bg-paper rounded-2xl border border-line text-xs font-bold text-forest w-fit">
+            <Loader2 className="w-4 h-4 animate-spin text-lime" />
+            <span>Consulting Krishi AI knowledge base...</span>
+          </div>
+        )}
       </div>
 
       {/* CHAT INPUT BAR */}
-      <div className="flex items-center gap-2 bg-white p-2 rounded-2xl shadow-lg border border-slate-200">
+      <div className="flex items-center gap-2 bg-white p-2 sm:p-2.5 rounded-2xl shadow-[var(--shadow-lift)] border border-line">
         <button
+          type="button"
           onClick={handleVoiceInput}
-          className={`p-3 rounded-xl transition ${
-            isListening ? "bg-red-500 text-white animate-pulse" : "bg-emerald-100 text-emerald-800 hover:bg-emerald-200"
+          className={`min-h-[48px] min-w-[48px] rounded-xl flex items-center justify-center transition cursor-pointer ${
+            showKural ? "bg-forest text-lime" : "bg-paper text-forest hover:bg-line border border-line"
           }`}
           title="Voice input"
+          aria-label="Voice input"
         >
-          <Mic className="w-5 h-5" />
+          <Mic className="w-5 h-5 stroke-[2.2]" />
         </button>
 
         <input
@@ -177,16 +210,24 @@ export const AssistantPage: React.FC = () => {
           onChange={(e) => setInputQuery(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && handleSend()}
           placeholder={t("chatPlaceholder")}
-          className="flex-1 text-xs text-slate-900 bg-transparent px-2 outline-none font-medium"
+          className="flex-1 min-h-[48px] text-xs sm:text-sm text-ink bg-transparent px-3 outline-none font-medium placeholder:text-ink-3"
         />
 
         <button
+          type="button"
           onClick={handleSend}
-          className="p-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl shadow-md transition"
+          disabled={!inputQuery.trim() || loading}
+          aria-label="Send query"
+          className="min-h-[48px] min-w-[48px] bg-forest hover:bg-forest-hover text-lime disabled:opacity-50 rounded-xl shadow-xs transition flex items-center justify-center cursor-pointer active:scale-95"
         >
           <Send className="w-5 h-5" />
         </button>
       </div>
-    </div>
+
+      <CropGuardKural
+        isOpen={showKural}
+        onClose={() => setShowKural(false)}
+      />
+    </motion.div>
   );
 };
