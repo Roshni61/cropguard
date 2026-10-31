@@ -272,3 +272,4 @@ class RetailerService:
             "availability": shop_availability,
             "total_shops_stocking": len(shop_availability)
         }
+

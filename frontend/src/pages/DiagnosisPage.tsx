@@ -4,12 +4,14 @@ import {
   AlertCircle, CloudRain, UserPlus, RefreshCw, Volume2, ShieldCheck, 
   Sprout, FlaskConical, CheckCircle2, MessageSquare, History, Sparkles, 
   Send, BookOpen, Clock, AlertTriangle, X, CheckSquare, 
-  Square, Info, MapPin, Calendar, HelpCircle
+  Square, Info, MapPin, Calendar, HelpCircle, Video
 } from "lucide-react";
 import { useTranslation } from "../i18n/I18nContext";
 import { GradCamViewer } from "../components/GradCamViewer";
 import { CropGuardKural } from "../components/CropGuardKural";
 import { VerifiedProductsModule } from "../components/VerifiedProductsModule";
+import { ExpertConsultationBookingModal } from "../components/ExpertConsultationBookingModal";
+import { ConsultationRoomModal } from "../components/ConsultationRoomModal";
 import { 
   sendChatMessageAPI, 
   fetchUserScansHistoryAPI, 
@@ -94,6 +96,10 @@ export const DiagnosisPage: React.FC<DiagnosisPageProps> = ({ data: initialData,
   const [historyScans, setHistoryScans] = useState<any[]>([]);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
   const [loadingHistoryScanId, setLoadingHistoryScanId] = useState<string | null>(null);
+
+  // Phase 6: Consultation appointment & room modal states
+  const [showConsultationBooking, setShowConsultationBooking] = useState(false);
+  const [activeConsultationForRoom, setActiveConsultationForRoom] = useState<any | null>(null);
 
   // Spoken explanation generator
   const handleReadAloud = () => {
@@ -765,6 +771,19 @@ export const DiagnosisPage: React.FC<DiagnosisPageProps> = ({ data: initialData,
               <UserPlus className="w-4 h-4 text-lime" />
               <span>{isEscalating ? "Submitting to District Queue..." : "Submit to Agricultural Officer (KVK/TNAU)"}</span>
             </button>
+
+            {/* Direct Live Consultation Option (Phase 6) */}
+            <div className="pt-3 border-t border-line/60 flex flex-col sm:flex-row items-center justify-between gap-3">
+              <span className="text-xs text-ink-2 font-medium">Prefer speaking live with a verified pathologist?</span>
+              <button
+                type="button"
+                onClick={() => setShowConsultationBooking(true)}
+                className="w-full sm:w-auto py-2.5 px-5 bg-amber-400 hover:bg-amber-300 text-amber-950 font-black rounded-full text-xs flex items-center justify-center gap-2 shadow-xs transition cursor-pointer"
+              >
+                <Video className="w-4 h-4 text-amber-950" />
+                <span>Book Live Video / Chat Appointment</span>
+              </button>
+            </div>
           </div>
         )}
       </div>
@@ -959,6 +978,34 @@ export const DiagnosisPage: React.FC<DiagnosisPageProps> = ({ data: initialData,
             </div>
           </motion.div>
         </div>
+      )}
+
+      {/* PHASE 6: Expert Consultation Booking Modal */}
+      {showConsultationBooking && (
+        <ExpertConsultationBookingModal
+          isOpen={showConsultationBooking}
+          onClose={() => setShowConsultationBooking(false)}
+          crop={cropKey}
+          scanId={data.scan_id || data.id}
+          imageUrl={data.captured_image_url || data.image_url}
+          suspectedDisease={diseaseName}
+          district={district}
+          onBookingSuccess={(consultationData) => {
+            setShowConsultationBooking(false);
+            setActiveConsultationForRoom(consultationData);
+          }}
+        />
+      )}
+
+      {/* PHASE 6: Active Real-Time Video/Chat Consultation Room */}
+      {activeConsultationForRoom && (
+        <ConsultationRoomModal
+          isOpen={Boolean(activeConsultationForRoom)}
+          onClose={() => setActiveConsultationForRoom(null)}
+          consultation={activeConsultationForRoom}
+          currentUserRole="FARMER"
+          currentUserName="Farmer"
+        />
       )}
     </motion.div>
   );

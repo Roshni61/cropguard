@@ -275,3 +275,75 @@ class ShopInventory(Base):
     shop = relationship("AgriShop", back_populates="inventories")
     product = relationship("AgriProduct", back_populates="inventories")
 
+
+class ExpertProfile(Base):
+    __tablename__ = "expert_profiles"
+
+    id = Column(String, primary_key=True, default=generate_uuid)
+    user_id = Column(String, ForeignKey("users.id"), nullable=True, index=True)
+    name = Column(String, nullable=False, index=True)
+    designation = Column(String, nullable=False) # e.g. "Senior Plant Pathologist"
+    institution = Column(String, nullable=False) # e.g. "Tamil Nadu Agricultural University (TNAU), Coimbatore"
+    qualifications = Column(String, nullable=False) # e.g. "Ph.D. Plant Pathology (TNAU)"
+    specializations = Column(JSON, default=list) # e.g. ["Solanaceous Vegetables", "Fungal Blights", "Bio-Control"]
+    languages = Column(JSON, default=list) # e.g. ["Tamil", "English"]
+    experience_years = Column(Integer, default=12)
+    verification_status = Column(String, default="VERIFIED", index=True) # VERIFIED, PENDING, SUSPENDED
+    avatar_url = Column(String, nullable=True)
+    rating = Column(Float, default=4.9)
+    consultation_count = Column(Integer, default=45)
+    available_days = Column(JSON, default=list)
+    available_hours = Column(String, default="09:00 AM - 05:30 PM")
+    available_slots = Column(JSON, default=list) # e.g. ["Today 10:00 AM - 10:30 AM", "Today 02:30 PM - 03:00 PM"]
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    consultations = relationship("ConsultationAppointment", back_populates="expert")
+
+
+class ConsultationAppointment(Base):
+    __tablename__ = "consultations"
+
+    id = Column(String, primary_key=True, default=generate_uuid)
+    farmer_id = Column(String, ForeignKey("users.id"), nullable=True, index=True)
+    farmer_name = Column(String, nullable=False)
+    farmer_phone = Column(String, nullable=True)
+    farmer_district = Column(String, default="Coimbatore")
+    expert_id = Column(String, ForeignKey("expert_profiles.id"), nullable=True, index=True)
+    expert_name = Column(String, nullable=True)
+    scan_id = Column(String, ForeignKey("scans.id"), nullable=True, index=True)
+    case_id = Column(String, ForeignKey("expert_cases.id"), nullable=True, index=True)
+    consultation_type = Column(String, default="CHAT") # CHAT, VIDEO
+    problem_description = Column(Text, nullable=False)
+    crop = Column(String, default="Tomato")
+    shared_image_url = Column(String, nullable=True)
+    farmer_consent = Column(Boolean, default=True)
+    scheduled_time = Column(String, nullable=False)
+    status = Column(String, default="REQUESTED", index=True) # REQUESTED, CONFIRMED, IN_PROGRESS, COMPLETED, CANCELLED
+    room_id = Column(String, default=generate_uuid, index=True) # WebRTC/chat room identifier
+    expert_assessment = Column(Text, nullable=True)
+    expert_treatment_recommendation = Column(Text, nullable=True)
+    additional_images_requested = Column(Boolean, default=False)
+    additional_images_request_note = Column(Text, nullable=True)
+    outcome = Column(String, nullable=True) # RESOLVED, PRESCRIPTION_ISSUED, ESCALATED
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    expert = relationship("ExpertProfile", back_populates="consultations")
+    messages = relationship("ConsultationMessage", back_populates="consultation", cascade="all, delete-orphan", order_by="ConsultationMessage.created_at")
+
+
+class ConsultationMessage(Base):
+    __tablename__ = "consultation_messages"
+
+    id = Column(String, primary_key=True, default=generate_uuid)
+    consultation_id = Column(String, ForeignKey("consultations.id", ondelete="CASCADE"), nullable=False, index=True)
+    sender_id = Column(String, nullable=True)
+    sender_name = Column(String, nullable=False)
+    sender_role = Column(String, default="FARMER") # FARMER, EXPERT, SYSTEM
+    message = Column(Text, nullable=False)
+    image_url = Column(String, nullable=True)
+    message_type = Column(String, default="TEXT") # TEXT, IMAGE, IMAGE_REQUEST, PRESCRIPTION, SYSTEM
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    consultation = relationship("ConsultationAppointment", back_populates="messages")
+

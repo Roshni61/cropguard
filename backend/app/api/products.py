@@ -58,3 +58,4 @@ async def get_product_shop_availability(
         db, product_id=product_id, district=district, pincode=pincode, user_lat=lat, user_lng=lng
     )
     return res
+

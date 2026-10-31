@@ -5,18 +5,23 @@ from app.config import settings
 from app.api import (
     auth, farms, scans, treatments, weather, risk, 
     chat, experts, officer, market, schemes, sync,
-    products, shops
+    products, shops, consultations
 )
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     if settings.DEMO_LOGIN_ENABLED:
         try:
-            from app.db.seed import init_demo_accounts, init_phase5_products_and_shops
+            from app.db.seed import (
+                init_demo_accounts,
+                init_phase5_products_and_shops,
+                init_phase6_experts_and_consultations
+            )
             init_demo_accounts()
             init_phase5_products_and_shops()
+            init_phase6_experts_and_consultations()
         except Exception as e:
-            print(f"[STARTUP] Demo accounts & Phase 5 seed notice: {e}")
+            print(f"[STARTUP] Demo accounts & Phase 5/6 seed notice: {e}")
     yield
 
 app = FastAPI(
@@ -51,6 +56,7 @@ app.include_router(schemes.router, prefix=settings.API_V1_STR)
 app.include_router(sync.router, prefix=settings.API_V1_STR)
 app.include_router(products.router, prefix=settings.API_V1_STR)
 app.include_router(shops.router, prefix=settings.API_V1_STR)
+app.include_router(consultations.router, prefix=settings.API_V1_STR)
 
 @app.get("/")
 def root():

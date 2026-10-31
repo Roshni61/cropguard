@@ -3,14 +3,24 @@ import { motion, useReducedMotion } from "framer-motion";
 import { 
   Camera, Sun, CloudRain, ShieldAlert, Sparkles, Sprout, 
   ArrowRight, Activity, MapPin, TrendingUp, Droplets, Wind, 
-  CheckCircle2, Clock, Phone, Building2, BookOpen, History, Store
+  CheckCircle2, Clock, Phone, Building2, BookOpen, History, Store,
+  Video, UserPlus
 } from "lucide-react";
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid } from "recharts";
 import { useTranslation } from "../i18n/I18nContext";
 import { ImageWithFallback } from "../components/ImageWithFallback";
 import { LocationSelectorModal } from "../components/LocationSelectorModal";
+import { ExpertConsultationBookingModal } from "../components/ExpertConsultationBookingModal";
+import { ConsultationRoomModal } from "../components/ConsultationRoomModal";
 import { TN_DISTRICTS, type TNDistrict, type VillageTown, getTNDistrictById } from "../data/tamilNaduLocations";
-import { fetchUserFieldsAPI, fetchRecentScansAPI, type FieldItem, type RecentScanItem } from "../services/api";
+import { 
+  fetchUserFieldsAPI, 
+  fetchRecentScansAPI, 
+  fetchMyConsultationsAPI,
+  type FieldItem, 
+  type RecentScanItem,
+  type ConsultationItem
+} from "../services/api";
 
 interface FarmerHomeProps {
   onScanClick: () => void;
@@ -62,6 +72,11 @@ export const FarmerHome: React.FC<FarmerHomeProps> = ({
   const [selectedFieldId, setSelectedFieldId] = useState<string>("fld-demo-01");
   const [recentScans, setRecentScans] = useState<RecentScanItem[]>([]);
 
+  // Phase 6: Consultation appointments & room states
+  const [consultations, setConsultations] = useState<ConsultationItem[]>([]);
+  const [showBookingModal, setShowBookingModal] = useState(false);
+  const [activeRoom, setActiveRoom] = useState<ConsultationItem | null>(null);
+
   useEffect(() => {
     if (currentDistrict) setDistrict(currentDistrict);
     if (currentTown) setTown(currentTown);
@@ -69,11 +84,16 @@ export const FarmerHome: React.FC<FarmerHomeProps> = ({
 
   useEffect(() => {
     let isMounted = true;
-    Promise.all([fetchUserFieldsAPI(), fetchRecentScansAPI()]).then(([fList, sList]) => {
+    Promise.all([
+      fetchUserFieldsAPI(), 
+      fetchRecentScansAPI(),
+      fetchMyConsultationsAPI()
+    ]).then(([fList, sList, cList]) => {
       if (isMounted) {
         setFields(fList);
         if (fList.length > 0) setSelectedFieldId(fList[0].id);
         setRecentScans(sList);
+        setConsultations(cList || []);
       }
     });
     return () => { isMounted = false; };
@@ -669,6 +689,73 @@ export const FarmerHome: React.FC<FarmerHomeProps> = ({
         </button>
       </motion.div>
 
+      {/* 10. Expert Consultations & Appointments (Phase 6) */}
+      <motion.div variants={itemVariants} className="bg-white rounded-3xl p-6 shadow-[var(--shadow-soft)] border border-line space-y-4">
+        <div className="flex items-center justify-between border-b border-line pb-3">
+          <div className="flex items-center gap-2">
+            <Video className="w-5 h-5 text-forest" />
+            <div>
+              <h3 className="font-bold text-base text-forest">
+                {language === "ta" ? "வேளாண் நிபுணர் ஆலோசனை & முன்பதிவு" : "Expert Consultations & Clinical Appointments"}
+              </h3>
+              <p className="text-xs text-ink-2">Live WebRTC Video & Chat with TNAU / KVK Plant Pathologists</p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => setShowBookingModal(true)}
+            className="px-3.5 py-1.5 bg-forest hover:bg-forest-hover text-lime font-bold text-xs rounded-xl shadow-xs transition flex items-center gap-1.5 cursor-pointer"
+          >
+            <UserPlus className="w-3.5 h-3.5" />
+            <span>{language === "ta" ? "ஆலோசனை முன்பதிவு" : "Book Expert Call"}</span>
+          </button>
+        </div>
+
+        {consultations.length > 0 ? (
+          <div className="space-y-3">
+            {consultations.map((c) => (
+              <div key={c.id} className="p-4 bg-paper rounded-2xl border border-line flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="font-bold text-xs text-forest">{c.expert_name || "TNAU Agronomist"}</span>
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-purple-100 text-purple-900">
+                      {c.consultation_type === "VIDEO" ? "📹 Video Call" : "💬 Chat"}
+                    </span>
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-100 text-emerald-950">
+                      {c.status}
+                    </span>
+                  </div>
+                  <p className="text-xs text-ink-2">{c.crop} • {c.problem_description.slice(0, 70)}...</p>
+                  <p className="text-[11px] text-ink-3 flex items-center gap-1">
+                    <Clock className="w-3 h-3 text-forest" />
+                    <span>Slot: {c.scheduled_time}</span>
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setActiveRoom(c)}
+                  className="px-4 py-2 bg-forest hover:bg-forest-hover text-cream font-bold text-xs rounded-xl shadow-xs transition cursor-pointer flex items-center gap-1.5 shrink-0"
+                >
+                  <Video className="w-3.5 h-3.5 text-lime" />
+                  <span>Join Room</span>
+                </button>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="p-6 bg-paper rounded-2xl border border-line text-center space-y-2">
+            <p className="text-xs text-ink-2">No active appointments scheduled today. You can consult with verified agronomists after scanning a crop or directly.</p>
+            <button
+              type="button"
+              onClick={() => setShowBookingModal(true)}
+              className="text-xs font-bold text-forest hover:underline cursor-pointer"
+            >
+              Browse Available Agronomists & Appointment Slots →
+            </button>
+          </div>
+        )}
+      </motion.div>
+
       {/* Location Selector Modal */}
       <LocationSelectorModal
         isOpen={showLocationModal}
@@ -677,6 +764,35 @@ export const FarmerHome: React.FC<FarmerHomeProps> = ({
         currentTownName={town.name}
         onSelectLocation={handleLocationSelected}
       />
+
+      {/* Expert Consultation Booking Modal */}
+      {showBookingModal && (
+        <ExpertConsultationBookingModal
+          isOpen={showBookingModal}
+          onClose={() => setShowBookingModal(false)}
+          crop={activeField.crop}
+          district={district.name}
+          onBookingSuccess={(cData) => {
+            setShowBookingModal(false);
+            setActiveRoom(cData);
+            fetchMyConsultationsAPI().then(l => setConsultations(l || []));
+          }}
+        />
+      )}
+
+      {/* Active Consultation Room */}
+      {activeRoom && (
+        <ConsultationRoomModal
+          isOpen={Boolean(activeRoom)}
+          onClose={() => {
+            setActiveRoom(null);
+            fetchMyConsultationsAPI().then(l => setConsultations(l || []));
+          }}
+          consultation={activeRoom}
+          currentUserRole="FARMER"
+          currentUserName={user?.name || "Farmer"}
+        />
+      )}
     </motion.div>
   );
 };

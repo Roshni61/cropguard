@@ -2,7 +2,8 @@ from app.db.database import SyncSessionLocal, sync_engine, Base
 from app.db.models import (
     User, Farm, Field, Scan, TreatmentKnowledge,
     OutbreakCluster, Alert, ExpertCase, MarketPrice,
-    GovernmentScheme, AgriProduct, AgriShop, ShopInventory
+    GovernmentScheme, AgriProduct, AgriShop, ShopInventory,
+    ExpertProfile, ConsultationAppointment, ConsultationMessage
 )
 from app.security.pwd import hash_password
 
@@ -846,6 +847,197 @@ def init_phase5_products_and_shops(db=None):
 
     except Exception as e:
         print(f"[SEED] Phase 5 products/shops seed notice: {e}")
+        if db:
+            db.rollback()
+    finally:
+        if should_close and db:
+            db.close()
+
+
+def init_phase6_experts_and_consultations(db=None):
+    """Seed verified agricultural experts and demo consultations for Phase 6."""
+    Base.metadata.create_all(bind=sync_engine)
+    should_close = False
+    if db is None:
+        db = SyncSessionLocal()
+        should_close = True
+
+    try:
+        # Check if expert profiles already exist
+        if db.query(ExpertProfile).count() == 0:
+            experts = [
+                ExpertProfile(
+                    id="exp-01",
+                    user_id="usr-demo-expert",
+                    name="Dr. S. Lakshmi",
+                    designation="Senior Plant Pathologist & Extension Agronomist",
+                    institution="Tamil Nadu Agricultural University (TNAU), Coimbatore",
+                    qualifications="Ph.D. Plant Pathology (TNAU), B.Sc. Agriculture (Honours)",
+                    specializations=[
+                        "Solanaceous Vegetables (Tomato, Chilli, Brinjal)",
+                        "Foliar Fungal Blights & Cankers",
+                        "Biological Control & Trichoderma Formulations"
+                    ],
+                    languages=["Tamil", "English"],
+                    experience_years=14,
+                    verification_status="VERIFIED",
+                    avatar_url="https://images.unsplash.com/photo-1594824813571-638f0263613b?auto=format&fit=crop&w=300&q=80",
+                    rating=4.9,
+                    consultation_count=138,
+                    available_days=["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"],
+                    available_hours="09:30 AM - 05:00 PM",
+                    available_slots=[
+                        "Today 02:30 PM - 03:00 PM",
+                        "Today 04:00 PM - 04:30 PM",
+                        "Tomorrow 10:30 AM - 11:00 AM",
+                        "Tomorrow 03:00 PM - 03:30 PM"
+                    ]
+                ),
+                ExpertProfile(
+                    id="exp-02",
+                    user_id=None,
+                    name="Dr. K. Murugan",
+                    designation="Chief Agricultural Entomologist",
+                    institution="Agricultural College & Research Institute, Madurai",
+                    qualifications="Ph.D. Entomology (IARI New Delhi), M.Sc. Agri (TNAU)",
+                    specializations=[
+                        "Paddy / Rice Stem Borer & Leaf Folder",
+                        "Cotton Bollworm & Sucking Pest Complex",
+                        "Integrated Pest Management (IPM)"
+                    ],
+                    languages=["Tamil", "English", "Hindi"],
+                    experience_years=11,
+                    verification_status="VERIFIED",
+                    avatar_url="https://images.unsplash.com/photo-1622253692010-333f2da6031d?auto=format&fit=crop&w=300&q=80",
+                    rating=4.8,
+                    consultation_count=96,
+                    available_days=["Monday", "Wednesday", "Thursday", "Friday", "Saturday"],
+                    available_hours="10:00 AM - 05:30 PM",
+                    available_slots=[
+                        "Today 03:30 PM - 04:00 PM",
+                        "Tomorrow 11:30 AM - 12:00 PM",
+                        "Tomorrow 02:00 PM - 02:30 PM"
+                    ]
+                ),
+                ExpertProfile(
+                    id="exp-03",
+                    user_id=None,
+                    name="Dr. P. Ramanathan",
+                    designation="Horticultural Pathologist & Banana Specialist",
+                    institution="ICAR - National Research Centre for Banana (NRCB), Tiruchirappalli",
+                    qualifications="Ph.D. Horticultural Pathology (TNAU), Post-Doctoral Fellow (IARI)",
+                    specializations=[
+                        "Banana Sigatoka & Fusarium Wilt (TR4)",
+                        "Papaya Ringspot & Viral Foliar Diseases",
+                        "Drip Fertigation & Soil Micro-biome Health"
+                    ],
+                    languages=["Tamil", "English"],
+                    experience_years=16,
+                    verification_status="VERIFIED",
+                    avatar_url="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=300&q=80",
+                    rating=4.9,
+                    consultation_count=154,
+                    available_days=["Tuesday", "Wednesday", "Thursday", "Friday"],
+                    available_hours="09:00 AM - 04:30 PM",
+                    available_slots=[
+                        "Today 05:00 PM - 05:30 PM",
+                        "Tomorrow 09:30 AM - 10:00 AM",
+                        "Tomorrow 04:00 PM - 04:30 PM"
+                    ]
+                ),
+                ExpertProfile(
+                    id="exp-04",
+                    user_id="usr-demo-officer",
+                    name="Thiru. R. Selvakumar",
+                    designation="District Agricultural Extension Officer",
+                    institution="Krishi Vigyan Kendra (KVK), Aduthurai, Thanjavur",
+                    qualifications="M.Sc. Agronomy (Annamalai University), B.Sc. Agriculture",
+                    specializations=[
+                        "Paddy Blast & Bacterial Leaf Blight",
+                        "Certified Seed Treatments & Nursery Care",
+                        "State Agrochemical Subsidy Directives"
+                    ],
+                    languages=["Tamil", "English"],
+                    experience_years=9,
+                    verification_status="VERIFIED",
+                    avatar_url="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=300&q=80",
+                    rating=4.7,
+                    consultation_count=82,
+                    available_days=["Monday", "Tuesday", "Wednesday", "Friday"],
+                    available_hours="08:30 AM - 04:00 PM",
+                    available_slots=[
+                        "Today 04:30 PM - 05:00 PM",
+                        "Tomorrow 10:00 AM - 10:30 AM"
+                    ]
+                )
+            ]
+            db.add_all(experts)
+            db.commit()
+
+        # Check if demo consultation exists
+        if db.query(ConsultationAppointment).count() == 0:
+            demo_consultation = ConsultationAppointment(
+                id="cns-demo-01",
+                farmer_id="usr-demo-farmer",
+                farmer_name="Ramesh Kumar (Demo Farmer)",
+                farmer_phone="+91 94431 82740",
+                farmer_district="Coimbatore",
+                expert_id="exp-01",
+                expert_name="Dr. S. Lakshmi",
+                scan_id="scn-demo-01",
+                case_id=None,
+                consultation_type="VIDEO",
+                problem_description="Concentric brown lesions observed on lower leaves of tomato plants (Arka Rakshak). Yellow halos spreading after consecutive evening rains in Pollachi.",
+                crop="Tomato",
+                shared_image_url="/samples/sample_early_blight.jpg",
+                farmer_consent=True,
+                scheduled_time="Today 02:30 PM - 03:00 PM",
+                status="CONFIRMED",
+                room_id="room-cropguard-demo-01",
+                expert_assessment="Early Blight (Alternaria solani) confirmed visually. Lower canopy infection favored by 78% relative humidity and recent rainfall.",
+                expert_treatment_recommendation="Immediate lower canopy leaf pruning (bagged and removed). Once weather clears, apply Mancozeb 75% WP (Indofil M-45) @ 2.0g/L or bio-agent Trichoderma viride @ 5g/L. Strictly observe 7-day PHI.",
+                additional_images_requested=False,
+                outcome="PRESCRIPTION_ISSUED"
+            )
+            db.add(demo_consultation)
+            db.commit()
+
+            # Seed initial messages for consultation
+            messages = [
+                ConsultationMessage(
+                    id="msg-cns-01",
+                    consultation_id="cns-demo-01",
+                    sender_id=None,
+                    sender_name="CropGuard System",
+                    sender_role="SYSTEM",
+                    message="Consultation confirmed with Dr. S. Lakshmi (TNAU Senior Plant Pathologist). WebRTC Video Room is ready.",
+                    message_type="SYSTEM"
+                ),
+                ConsultationMessage(
+                    id="msg-cns-02",
+                    consultation_id="cns-demo-01",
+                    sender_id="usr-demo-farmer",
+                    sender_name="Ramesh Kumar",
+                    sender_role="FARMER",
+                    message="Vanakkam Doctor. Concentric dark rings started appearing on my tomato bottom leaves after 3 days of rain. I shared my leaf scan and field location with consent.",
+                    image_url="/samples/sample_early_blight.jpg",
+                    message_type="IMAGE"
+                ),
+                ConsultationMessage(
+                    id="msg-cns-03",
+                    consultation_id="cns-demo-01",
+                    sender_id="usr-demo-expert",
+                    sender_name="Dr. S. Lakshmi",
+                    sender_role="EXPERT",
+                    message="Vanakkam Ramesh. I inspected your leaf image. The 'target board' concentric rings clearly show Early Blight (Alternaria solani). Do not apply overhead sprinkler water. Please join our video session to inspect whole-field canopy aeration.",
+                    message_type="TEXT"
+                )
+            ]
+            db.add_all(messages)
+            db.commit()
+
+    except Exception as e:
+        print(f"[SEED] Phase 6 experts/consultations seed notice: {e}")
         if db:
             db.rollback()
     finally:

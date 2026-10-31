@@ -92,3 +92,4 @@ async def get_shop_inventory_details(shop_id: str, db: AsyncSession = Depends(ge
         },
         "inventory": items
     }
+

@@ -145,6 +145,81 @@ def ensure_schema_migrations():
             """)
             cur.execute("CREATE INDEX IF NOT EXISTS ix_shop_inventory_shop ON shop_inventory (shop_id)")
             cur.execute("CREATE INDEX IF NOT EXISTS ix_shop_inventory_product ON shop_inventory (product_id)")
+
+            # Phase 6: Ensure expert_profiles table exists
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS expert_profiles (
+                    id VARCHAR PRIMARY KEY,
+                    user_id VARCHAR REFERENCES users(id),
+                    name VARCHAR NOT NULL,
+                    designation VARCHAR NOT NULL,
+                    institution VARCHAR NOT NULL,
+                    qualifications VARCHAR NOT NULL,
+                    specializations JSON DEFAULT '[]',
+                    languages JSON DEFAULT '[]',
+                    experience_years INTEGER DEFAULT 12,
+                    verification_status VARCHAR DEFAULT 'VERIFIED',
+                    avatar_url VARCHAR,
+                    rating FLOAT DEFAULT 4.9,
+                    consultation_count INTEGER DEFAULT 45,
+                    available_days JSON DEFAULT '[]',
+                    available_hours VARCHAR DEFAULT '09:00 AM - 05:30 PM',
+                    available_slots JSON DEFAULT '[]',
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
+            cur.execute("CREATE INDEX IF NOT EXISTS ix_expert_profiles_name ON expert_profiles (name)")
+            cur.execute("CREATE INDEX IF NOT EXISTS ix_expert_profiles_status ON expert_profiles (verification_status)")
+
+            # Phase 6: Ensure consultations table exists
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS consultations (
+                    id VARCHAR PRIMARY KEY,
+                    farmer_id VARCHAR REFERENCES users(id),
+                    farmer_name VARCHAR NOT NULL,
+                    farmer_phone VARCHAR,
+                    farmer_district VARCHAR DEFAULT 'Coimbatore',
+                    expert_id VARCHAR REFERENCES expert_profiles(id),
+                    expert_name VARCHAR,
+                    scan_id VARCHAR REFERENCES scans(id),
+                    case_id VARCHAR REFERENCES expert_cases(id),
+                    consultation_type VARCHAR DEFAULT 'CHAT',
+                    problem_description TEXT NOT NULL,
+                    crop VARCHAR DEFAULT 'Tomato',
+                    shared_image_url VARCHAR,
+                    farmer_consent BOOLEAN DEFAULT 1,
+                    scheduled_time VARCHAR NOT NULL,
+                    status VARCHAR DEFAULT 'REQUESTED',
+                    room_id VARCHAR NOT NULL,
+                    expert_assessment TEXT,
+                    expert_treatment_recommendation TEXT,
+                    additional_images_requested BOOLEAN DEFAULT 0,
+                    additional_images_request_note TEXT,
+                    outcome VARCHAR,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
+            cur.execute("CREATE INDEX IF NOT EXISTS ix_consultations_farmer ON consultations (farmer_id)")
+            cur.execute("CREATE INDEX IF NOT EXISTS ix_consultations_expert ON consultations (expert_id)")
+            cur.execute("CREATE INDEX IF NOT EXISTS ix_consultations_status ON consultations (status)")
+            cur.execute("CREATE INDEX IF NOT EXISTS ix_consultations_room ON consultations (room_id)")
+
+            # Phase 6: Ensure consultation_messages table exists
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS consultation_messages (
+                    id VARCHAR PRIMARY KEY,
+                    consultation_id VARCHAR NOT NULL REFERENCES consultations(id) ON DELETE CASCADE,
+                    sender_id VARCHAR,
+                    sender_name VARCHAR NOT NULL,
+                    sender_role VARCHAR DEFAULT 'FARMER',
+                    message TEXT NOT NULL,
+                    image_url VARCHAR,
+                    message_type VARCHAR DEFAULT 'TEXT',
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
+            cur.execute("CREATE INDEX IF NOT EXISTS ix_consultation_messages_consultation ON consultation_messages (consultation_id)")
             conn.commit()
 
             conn.close()
