@@ -211,3 +211,67 @@ class ChatMessage(Base):
     citations = Column(JSON, default=list) # verified knowledge citations
     field_context = Column(String, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
+
+
+class AgriProduct(Base):
+    __tablename__ = "agri_products"
+
+    id = Column(String, primary_key=True, default=generate_uuid)
+    name = Column(String, nullable=False, index=True)
+    active_ingredient = Column(String, nullable=False)
+    category = Column(String, default="Fungicide") # Fungicide, Bio-Control, Bactericide, Botanical, Micro-Nutrient
+    manufacturer = Column(String, nullable=False)
+    target_crops = Column(JSON, default=list)
+    target_diseases = Column(JSON, default=list)
+    approved_usage_and_label = Column(Text, nullable=False)
+    safety_precautions = Column(Text, nullable=False)
+    pre_harvest_interval_days = Column(Integer, default=7)
+    registration_number = Column(String, nullable=True)
+    verified_source = Column(String, default="CIBRC & TNAU Agritech Portal")
+    last_verified_date = Column(String, default="2026-03-01")
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    inventories = relationship("ShopInventory", back_populates="product", cascade="all, delete-orphan")
+
+
+class AgriShop(Base):
+    __tablename__ = "agri_shops"
+
+    id = Column(String, primary_key=True, default=generate_uuid)
+    name = Column(String, nullable=False, index=True)
+    type = Column(String, default="LICENSED_RETAILER") # LICENSED_RETAILER, COOPERATIVE_SOCIETY, KVK_SALES_COUNTER, GOVT_AGRI_DEPOT, FPO_OUTLET
+    license_number = Column(String, nullable=True)
+    district = Column(String, nullable=False, index=True)
+    taluk_or_town = Column(String, nullable=False, index=True)
+    pincode = Column(String, nullable=True, index=True)
+    address = Column(Text, nullable=False)
+    latitude = Column(Float, nullable=True)
+    longitude = Column(Float, nullable=True)
+    phone = Column(String, nullable=True)
+    whatsapp = Column(String, nullable=True)
+    operating_hours = Column(String, default="Mon-Sat: 8:00 AM - 7:30 PM")
+    verified_status = Column(String, default="VERIFIED_DEALER") # VERIFIED_DEALER, AUTHORIZED_COOPERATIVE, GOVT_INSTITUTION
+    last_verified_date = Column(String, default="2026-03-01")
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    inventories = relationship("ShopInventory", back_populates="shop", cascade="all, delete-orphan")
+
+
+class ShopInventory(Base):
+    __tablename__ = "shop_inventory"
+
+    id = Column(String, primary_key=True, default=generate_uuid)
+    shop_id = Column(String, ForeignKey("agri_shops.id"), nullable=False, index=True)
+    product_id = Column(String, ForeignKey("agri_products.id"), nullable=False, index=True)
+    package_size = Column(String, nullable=False) # e.g. "500g", "1L", "250g"
+    price_inr = Column(Float, nullable=True) # None when unverified
+    price_verified = Column(Boolean, default=True) # False if live price cannot be confirmed
+    stock_status = Column(String, default="IN_STOCK") # IN_STOCK, LOW_STOCK, OUT_OF_STOCK, CALL_TO_VERIFY
+    stock_verified = Column(Boolean, default=True) # False if live stock cannot be confirmed
+    last_verified_date = Column(String, default="2026-03-01")
+    notes = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    shop = relationship("AgriShop", back_populates="inventories")
+    product = relationship("AgriProduct", back_populates="inventories")
+

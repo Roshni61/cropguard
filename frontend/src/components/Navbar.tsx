@@ -1,5 +1,5 @@
 import React from "react";
-import { Shield, Globe, UserCheck, Stethoscope, Landmark, LogOut, User, BookOpen, MapPin } from "lucide-react";
+import { Shield, Globe, UserCheck, Stethoscope, Landmark, LogOut, User, BookOpen, MapPin, Store } from "lucide-react";
 import { useTranslation } from "../i18n/I18nContext";
 import { SyncBadge } from "./SyncBadge";
 
@@ -73,6 +73,16 @@ export const Navbar: React.FC<NavbarProps> = ({
           >
             <BookOpen className="w-3.5 h-3.5 text-lime" />
             <span>{t("cropGuide", "Crop Guide")}</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab("market")}
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+              activeTab === "market" ? "bg-white/15 text-lime" : "text-white/80 hover:text-white"
+            }`}
+          >
+            <Store className="w-3.5 h-3.5 text-lime" />
+            <span>Shops & Mandi</span>
           </button>
 
           {currentDistrictName && (

@@ -19,7 +19,7 @@ import { LocationSelectorModal } from "./components/LocationSelectorModal";
 import { TN_DISTRICTS, type TNDistrict, type VillageTown, getTNDistrictById } from "./data/tamilNaduLocations";
 import { fetchWeather, fetchDiseaseRisk, syncSupabaseSessionWithBackend } from "./services/api";
 import { supabase, isSupabaseConfigured } from "./services/supabase";
-import { Camera, Home, Sprout, Bot, Bell, TrendingUp, Shield, Loader2, LayoutDashboard, Mic, BookOpen } from "lucide-react";
+import { Camera, Home, Sprout, Bot, Bell, Shield, Loader2, LayoutDashboard, Mic, BookOpen, Store } from "lucide-react";
 
 interface MainDashboardProps {
   user: any;
@@ -204,7 +204,12 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ user, onLogout, initialTa
 
             {activeTab === "alerts" && <AlertsPage riskData={riskData} />}
 
-            {activeTab === "market" && <MarketSchemesPage />}
+            {activeTab === "market" && (
+              <MarketSchemesPage 
+                userDistrict={currentDistrict.name}
+                onNavigate={setActiveTab}
+              />
+            )}
           </>
         )}
       </main>
@@ -333,8 +338,8 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ user, onLogout, initialTa
                   activeTab === "market" ? "text-forest scale-105 font-black" : "text-ink-2 hover:text-ink"
                 }`}
               >
-                <TrendingUp className="w-5 h-5 stroke-[2.2]" />
-                <span>Market</span>
+                <Store className="w-5 h-5 stroke-[2.2]" />
+                <span>Shops & Mandi</span>
               </button>
             </div>
           )}

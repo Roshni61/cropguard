@@ -81,9 +81,74 @@ def ensure_schema_migrations():
                     cur.execute("ALTER TABLE expert_cases ADD COLUMN farmer_consent BOOLEAN DEFAULT 1")
                 conn.commit()
 
+            # Phase 5: Ensure agri_products table exists
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS agri_products (
+                    id VARCHAR PRIMARY KEY,
+                    name VARCHAR NOT NULL,
+                    active_ingredient VARCHAR NOT NULL,
+                    category VARCHAR NOT NULL DEFAULT 'Fungicide',
+                    manufacturer VARCHAR NOT NULL,
+                    target_crops JSON DEFAULT '[]',
+                    target_diseases JSON DEFAULT '[]',
+                    approved_usage_and_label TEXT NOT NULL,
+                    safety_precautions TEXT NOT NULL,
+                    pre_harvest_interval_days INTEGER DEFAULT 7,
+                    registration_number VARCHAR,
+                    verified_source VARCHAR DEFAULT 'CIBRC & TNAU Agritech Portal',
+                    last_verified_date VARCHAR DEFAULT '2026-03-01',
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
+            cur.execute("CREATE INDEX IF NOT EXISTS ix_agri_products_name ON agri_products (name)")
+
+            # Phase 5: Ensure agri_shops table exists
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS agri_shops (
+                    id VARCHAR PRIMARY KEY,
+                    name VARCHAR NOT NULL,
+                    type VARCHAR DEFAULT 'LICENSED_RETAILER',
+                    license_number VARCHAR,
+                    district VARCHAR NOT NULL,
+                    taluk_or_town VARCHAR NOT NULL,
+                    pincode VARCHAR,
+                    address TEXT NOT NULL,
+                    latitude FLOAT,
+                    longitude FLOAT,
+                    phone VARCHAR,
+                    whatsapp VARCHAR,
+                    operating_hours VARCHAR DEFAULT 'Mon-Sat: 8:00 AM - 7:30 PM',
+                    verified_status VARCHAR DEFAULT 'VERIFIED_DEALER',
+                    last_verified_date VARCHAR DEFAULT '2026-03-01',
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
+            cur.execute("CREATE INDEX IF NOT EXISTS ix_agri_shops_district ON agri_shops (district)")
+            cur.execute("CREATE INDEX IF NOT EXISTS ix_agri_shops_town ON agri_shops (taluk_or_town)")
+            cur.execute("CREATE INDEX IF NOT EXISTS ix_agri_shops_pincode ON agri_shops (pincode)")
+
+            # Phase 5: Ensure shop_inventory table exists
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS shop_inventory (
+                    id VARCHAR PRIMARY KEY,
+                    shop_id VARCHAR NOT NULL REFERENCES agri_shops(id),
+                    product_id VARCHAR NOT NULL REFERENCES agri_products(id),
+                    package_size VARCHAR NOT NULL,
+                    price_inr FLOAT,
+                    price_verified BOOLEAN DEFAULT 1,
+                    stock_status VARCHAR DEFAULT 'IN_STOCK',
+                    stock_verified BOOLEAN DEFAULT 1,
+                    last_verified_date VARCHAR DEFAULT '2026-03-01',
+                    notes TEXT,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
+            cur.execute("CREATE INDEX IF NOT EXISTS ix_shop_inventory_shop ON shop_inventory (shop_id)")
+            cur.execute("CREATE INDEX IF NOT EXISTS ix_shop_inventory_product ON shop_inventory (product_id)")
+            conn.commit()
+
             conn.close()
     except Exception as e:
-        print(f"[MIGRATION] Migration check notice: {e}")
         print(f"[MIGRATION] Migration check notice: {e}")
 
 ensure_schema_migrations()

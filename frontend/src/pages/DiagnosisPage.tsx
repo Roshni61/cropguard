@@ -9,6 +9,7 @@ import {
 import { useTranslation } from "../i18n/I18nContext";
 import { GradCamViewer } from "../components/GradCamViewer";
 import { CropGuardKural } from "../components/CropGuardKural";
+import { VerifiedProductsModule } from "../components/VerifiedProductsModule";
 import { 
   sendChatMessageAPI, 
   fetchUserScansHistoryAPI, 
@@ -645,6 +646,22 @@ export const DiagnosisPage: React.FC<DiagnosisPageProps> = ({ data: initialData,
               </div>
             </div>
           </div>
+
+          {/* PHASE 5: CIBRC-Verified Treatment Products & Local Agricultural Input Availability */}
+          {!isHealthy && !isLowConfidence && (
+            <div className="pt-4 border-t border-line">
+              <VerifiedProductsModule
+                crop={cropKey}
+                disease={diseaseName}
+                district={district}
+                onAskExpert={(prod, active) => {
+                  handleLaunchKuralWithQuery(
+                    `Is ${prod} (${active}) safe and recommended for ${diseaseName} on my ${cropMeta.label} in ${district}? Please explain official label directions, safety precautions, and pre-harvest interval (PHI).`
+                  );
+                }}
+              />
+            </div>
+          )}
         </div>
       )}
 

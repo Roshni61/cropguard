@@ -3,7 +3,7 @@ import { motion, useReducedMotion } from "framer-motion";
 import { 
   Camera, Sun, CloudRain, ShieldAlert, Sparkles, Sprout, 
   ArrowRight, Activity, MapPin, TrendingUp, Droplets, Wind, 
-  CheckCircle2, Clock, Phone, Building2, BookOpen, History
+  CheckCircle2, Clock, Phone, Building2, BookOpen, History, Store
 } from "lucide-react";
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid } from "recharts";
 import { useTranslation } from "../i18n/I18nContext";
@@ -640,6 +640,33 @@ export const FarmerHome: React.FC<FarmerHomeProps> = ({
             </div>
           ))}
         </div>
+      </motion.div>
+
+      {/* 9. Local Agri Input Retailers & Mandi Rates */}
+      <motion.div variants={itemVariants} className="bg-emerald-50/90 border border-emerald-200 rounded-3xl p-5 sm:p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-[var(--shadow-soft)]">
+        <div className="flex items-center gap-3.5">
+          <div className="w-12 h-12 rounded-2xl bg-white border border-emerald-300 flex items-center justify-center shrink-0 shadow-xs">
+            <Store className="w-6 h-6 text-forest" />
+          </div>
+          <div>
+            <h4 className="font-black text-sm sm:text-base text-forest">
+              {language === "ta" ? "உள்ளூர் உழவர் இடுபொருள் கடைகள் & மண்டி விலை" : "Local Agri Input Retailers & Mandi Rates"}
+            </h4>
+            <p className="text-xs text-ink-2 mt-0.5 leading-relaxed">
+              {language === "ta"
+                ? `${district.name} வட்டாரத்தில் அங்கீகரிக்கப்பட்ட உழவர் கூட்டுறவு சங்கங்கள் (PACCS), பூச்சிக்கொல்லி கடைகள் மற்றும் தினசரி மண்டி விலைகளை அறியவும்.`
+                : `Locate licensed input dealers, cooperatives (PACCS), and check today's APMC mandi commodity prices in ${district.name}.`}
+            </p>
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={() => onNavigate("market")}
+          className="shrink-0 px-4 py-2.5 bg-forest hover:bg-forest-hover text-cream font-bold text-xs rounded-xl shadow-xs transition flex items-center gap-2 cursor-pointer"
+        >
+          <span>{language === "ta" ? "கடைகள் & சந்தை காண்க" : "Find Shops & Rates"}</span>
+          <ArrowRight className="w-3.5 h-3.5 text-lime" />
+        </button>
       </motion.div>
 
       {/* Location Selector Modal */}
