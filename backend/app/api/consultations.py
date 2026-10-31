@@ -789,3 +789,4 @@ async def consultation_websocket_endpoint(
             "user": user_info,
             "timestamp": datetime.utcnow().isoformat()
         })
+
